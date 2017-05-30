@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Foreign Travel of Government Officials"
 output: html_notebook
 ---
 
@@ -12,6 +12,10 @@ library(gridExtra)
 library(grid)
 library(readr)
 ```
+
+On May 17, 2017, the [Washington Post broke a story](https://www.washingtonpost.com/world/national-security/house-majority-leader-to-colleagues-in-2016-i-think-putin-pays-trump/2017/05/17/515f6f8a-3aff-11e7-8854-21f359183e8c_story.html?utm_term=.93fbf39339ee) about a recorded conversation between some members of Congress where one of the participants says he thinks Vladimir Putin pays another member of Congress and the Republican Presidential Candidate. I became curious about the this and wanted to investigate the travel habits of Congressional members.    
+
+[This data](https://data.world/data4democracy/propublica-foreign-travel) comes from Data for Democracy/ProPublica and it represents the travel records of government officials from 1995-2017. 
 
 
 ```{r}
@@ -26,58 +30,63 @@ travels <- read_csv("https://query.data.world/s/7ezifc8eqig9vdazaoa1noecv",
                       country = col_character(),
                       table_header = col_character(), 
                       source_file = col_character(), 
-                      ArrivalYear = col_integer()
-                      
-                      )) %>%
+                      ArrivalYear = col_integer())) %>%
   mutate(year = format(arrival_date, "%Y"))
 head(travels)
 dim(travels)
 ```
 
 
+**How many travellers are represented?**
+
+```{r}
+nrow(travels %>% group_by(name) %>% summarise(GovernmentOfficials = n()) %>% na.omit())
+
+```
+**Who travelled to Russia most often?**
+
+```{r}
+travels %>% filter(grepl("Russia",country)) %>% group_by(name) %>% summarise(visitsToRussia = n()) %>% arrange(desc(visitsToRussia)) %>% top_n(6)
+```
+
+**I narrowed down the data set to those who have made more than 4 trips to Russia during their tenure.** 
+
 ```{r}
 myVectorOfStrings <- c("Rohr", "Curt Weldon", "Charles Taylor", "Sloat", "Paul Berkowitz", "Mark Gage", "Robert King" )
 matchExpression <- paste(myVectorOfStrings, collapse = "|")
-
-
-head(matchExpression)
 # [1] "foo|bar"
+```
+
+The table below shows of often each of the select Officials has travelled to each country represented.
+
+```{r}
 travels %>% filter(grepl(matchExpression, name)) %>% group_by(name, country) %>% summarise(n = n()) %>% arrange(country) %>% top_n(10)
-
-
 NN <- travels %>% filter(grepl(matchExpression, name)) %>% select(name, country, year) %>% arrange(name)%>% na.omit()
+```
 
-NN
+The proportion of each officials' travels to Russia in relation to all travels. 
+
+```{r, message=FALSE, warning=FALSE}
+NN$namesVector <- rep(c("Amanda Sloat", "Curt Weldon","Dana Rohrabacher", "Amanda Sloat","Robert King", "Charles Taylor", "Curt Weldon", "Dana Rohrabacher", "Mark Gage", "Robert King", "Dana Rohrabacher", "Mark Gage", "Paul Berkowitz","Robert King","Dana Rohrabacher"), times = c(43,1,4,9,1, 27,88,174,1,2, 4,49, 160, 87,1))
+x <- NN %>% filter(country == "Russia") %>% na.omit() %>% group_by(namesVector) %>% summarise(n = n())
+ggplot(NN, aes(x = namesVector)) + geom_bar(fill = "blue", alpha = 0.5) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + 
+  geom_boxplot(data = x, aes(x = namesVector, y = n, fatten = 4)) + labs(title = "All Trips", subtitle = " Black line demarcates the number of trips to Russia") +
+  labs(x="Government Official",y="Total Number of Trips")
 
 ```
 
-
-
-
-```{r}
-NN$namesVector <- rep(c("Amanda Sloat", "Curt Weldon","Dana Rohrabacher", "Amanda Sloat","Robert King", "Charles Taylor", "Curt Weldon", "Dana Rohrabacher", "Mark Gage", "Robert King", "Dana Rohrabacher", "Mark Gage", "Paul Berkowitz","Robert King","Dana Rohrabacher"), times = c(43,1,4,9,1, 27,88,174,1,2, 4,49, 160, 87,1))
-NN
-dim(NN)
-head(NN)
-x <- NN %>% filter(country == "Russia") %>% na.omit() %>% group_by(namesVector) %>% summarise(n = n())
-x
-
-NN %>% mutate(visitsToRussia = ifelse(namesVector == "Amanda Sloat", 4,ifelse(namesVector == "Charles Taylor", 8,ifelse(namesVector == "Curt Weldon", 22, ifelse(namesVector == "Dana Rohrabacher", 9, ifelse(namesVector == "Mark Gage", 6, ifelse(namesVector == "Paul Berkowitz", 4,6)))))))
-head(NN)
-ggplot(NN, aes(x = namesVector)) + geom_bar(fill = "blue") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + 
-  geom_point(data = x, aes(x = namesVector, y = n, color = "red", size = 2, alpha = 0.5))
-
-ggplot(NN, aes(x = namesVector)) + geom_bar(fill = "blue", alpha = 0.5) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + 
-  geom_boxplot(data = x, aes(x = namesVector, y = n, fatten = 4))
-
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#NN %>% mutate(visitsToRussia = ifelse(namesVector == "Amanda Sloat", 4,ifelse(namesVector == "Charles Taylor", 8,ifelse(namesVector == "Curt Weldon", 22, ifelse(namesVector == "Dana Rohrabacher", 9, ifelse(namesVector == "Mark Gage", 6, ifelse(namesVector == "Paul Berkowitz", 4,6)))))))
+#ggplot(NN, aes(x = namesVector)) + geom_bar(fill = "blue") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + 
+  #geom_point(data = x, aes(x = namesVector, y = n, color = "red", size = 2, alpha = 0.5))
 ```
 
 
 ```{r, fig.height=35, fig.width=8}
 NN %>% mutate(Country = ifelse(country == "Russia", "Russia", "Not Russia")) %>% 
   ggplot(aes(x = year, fill = Country)) + 
-  geom_bar() + 
-  scale_y_continuous(limits=c(0,30)) + 
+  geom_bar(position = "fill") + 
+  # scale_y_continuous(limits=c(0,30)) + 
   facet_grid(namesVector ~ .,scales = "free_y")  + 
   #scale_color_manual(values = palette_dark()) + 
  
@@ -86,15 +95,18 @@ NN %>% mutate(Country = ifelse(country == "Russia", "Russia", "Not Russia")) %>%
     #scale_fill_hue(c=45, l=80) +
   theme_tq() + 
   guides(color = F) + 
-  labs(title = "Civil Servants Who Most Frequently Travelled to Russia 1995-2016", x = "") 
+  labs(title = "Civil Servants Travel from 1995-2016", subtitle = "How much of that travel is to Russia",y = "Number of Trips")  + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) 
+```
+```{r}
+head(NN)
 ```
 
 
 ```{r, fig.height=35, fig.width=8}
 NN %>% 
   ggplot(aes(x = year, fill = country)) + 
-  geom_bar() + 
-  scale_y_continuous(limits=c(0,30)) + 
+  geom_bar(position = "fill") + 
+  #scale_y_continuous(limits=c(0,30)) + 
   facet_grid(namesVector ~ .,scales = "free_y")  + 
   scale_fill_manual(values=c('burlywood4',
 'cadetblue',
@@ -220,28 +232,20 @@ NN %>%
 'lightcyan3',
 'lightcyan4',
 'lightgoldenrod')) + 
-  
-  #scale_colour_brewer(palette = "Set1")+
-  #scale_color_manual(values = palette_light()) + 
- 
-    #scale_fill_manual(values=c("#330099", "#0099FF","#993333" ))+ 
-    #scale_fill_brewer(palette="Set1") +
-    #scale_fill_hue(c=45, l=80) +
   theme_tq() + 
   guides(color = F) + 
-  labs(title = "Civil Servants who Most Frequently Travelled to Russia \nRussia is in Black", x = "")
-#How many countries are represented
-NN %>% group_by(country) %>% summarise(n = n())
+  labs(title = "How much of the Official's travel is to Russia", x = "")  + 
+  labs(title = "", subtitle = "Civil Servants Travel from 1995-2016Trips to \n Russia are in black",y = "Number of Trips")  + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) 
 ```
 
 
-```{r, fig.height=40, fig.width=8}
+```{r, eval=FALSE, fig.height=40, fig.width=8, include=FALSE}
 NNN <- travels %>% filter(grepl(matchExpression, name)) %>% select(name, country, year)%>% ggplot(aes(x = year, fill = country)) + geom_bar() + scale_y_continuous(limits=c(0,4)) + facet_grid(name ~ .,scales = "free_y")  + scale_color_manual(values = palette_light()) + theme_tq() + guides(color = F) + labs(title = "Civil Servants who Most Frequently Travelled to Russia ", x = "")
 NNN
 
 ```
 
-```{r}
+```{r, eval=FALSE, include=FALSE}
 WeldonRussia <- travels %>%  filter(grepl("Weldon",name)) %>% filter(grepl("Russia", country)) %>%  arrange(desc(departure_date))
 WeldonN <- travels %>%  filter(grepl("Weldon",name)) %>% filter(grepl("Nether", country)) %>%  arrange(desc(departure_date))
 
@@ -249,19 +253,19 @@ dim(WeldonN)
 head(WeldonRussia)
 ```
 
-```{r}
+```{r, eval=FALSE, include=FALSE}
 RohrN <- travels %>%  filter(grepl("Rohrabacher",name)) %>% filter(grepl("Netherlands", country)) %>%  arrange(desc(departure_date))
 dim(RohrN)
 head(RohrN)
 ```
 
 
-```{r}
+```{r, eval=FALSE, include=FALSE}
 RohrabacherRussia <- travels %>%  filter(grepl("Rohrabacher",name)) %>% filter(grepl("Russia", country)) %>% arrange(desc(departure_date))
 dim(RohrabacherRussia)
 ```
 Taylor
-```{r}
+```{r, eval=FALSE, include=FALSE}
 TaylorRussia <- travels %>%  filter(grepl("Taylor",name)) %>% filter(grepl("Russia", country)) %>% arrange(desc(departure_date))
 dim(TaylorRussia)
 
@@ -269,19 +273,19 @@ TaylorN <- travels %>%  filter(grepl("Taylor",name)) %>% filter(grepl("Nether", 
 dim(TaylorN)
 ```
 
-```{r}
+```{r, eval=FALSE, include=FALSE}
 GageRussia <- travels %>%  filter(grepl("Gage",name)) %>% filter(grepl("Russia", country)) %>% arrange(desc(departure_date))
 GageN <- travels %>%  filter(grepl("Gage",name)) %>% filter(grepl("Nether", country)) %>% arrange(desc(departure_date))
 dim(GageN)
 ```
 
-```{r}
+```{r, eval=FALSE, include=FALSE}
 KingRussia <- travels %>%  filter(grepl("Robert King",name)) %>% filter(grepl("Russia", country)) %>% arrange(desc(departure_date))
 KingN <- travels %>%  filter(grepl("Robert King",name)) %>% filter(grepl("Nether", country)) %>% arrange(desc(departure_date))
 dim(KingN)
 ```
 
-```{r}
+```{r, eval=FALSE, include=FALSE}
 SloatRussia <- travels %>%  filter(grepl("Sloat",name)) %>% filter(grepl("Russia", country)) %>% arrange(desc(departure_date))
 SloatN <- travels %>%  filter(grepl("Sloat",name)) %>% filter(grepl("Netherl", country)) %>% arrange(desc(departure_date))
 dim(SloatN)
@@ -298,7 +302,7 @@ MostRussia <- rbind.data.frame(WeldonRussia, RohrabacherRussia, TaylorRussia, Ga
 dim(MostRussia)
 ```
 
-```{r}
+```{r, eval=FALSE, include=FALSE}
 head(MostRussia)
 MostRussia
 ```
@@ -309,17 +313,25 @@ MostRussia$namesVector <- rep(c("Curt Weldon", "Dana Rohrabacher","Charles Taylo
 MostRussia
 ```
 
-```{r}
-head(MostRussia
-     )
-```
 
 
 ```{r, fig.height=20, fig.width=8}
-MostRussia %>% ggplot(aes(x = year, fill = namesVector )) + geom_bar() + scale_y_continuous(limits=c(0,4)) + facet_grid(namesVector ~ .,scales = "free_y")  + scale_color_manual(values = palette_light()) + theme_tq() + guides(color = F) + labs(title = "Civil Servants who Most Frequently Travelled to Russia ", x = "")
+MostRussia %>% ggplot(aes(x = year)) + geom_bar(fill = "plum4") + scale_y_continuous(limits=c(0,4)) + facet_grid(namesVector ~ .,scales = "free_y")  + scale_color_manual(values = palette_light()) + theme_tq() + guides(color = F) + labs(title = "Civil Servants and their Trips to Russia", x = "")
 ```
 
+Finally I saw in a 2 part documentary, that there might be a connections with those in Russia to the Netherlands for the purposes of money laundering. Shown below is the proportion of trips to the Netherlands and Russia to all other countries visited. 
 
+
+```{r, fig.height=30, fig.width=9}
+NN %>% mutate(Country = ifelse(country == "Russia", "Russia", ifelse(country == "Netherlands","Netherlands", "Other"))) %>% 
+  ggplot(aes(x = year, fill = Country)) + 
+  geom_bar(position = "fill") + 
+  #scale_y_continuous(limits=c(0,30)) + 
+  facet_grid(namesVector ~ .,scales = "free_y")  + 
+  # scale_color_manual(values = palette_dark()) + theme_tq() + 
+  guides(color = F) + 
+  labs(title = "Civil Servants Travel from 1995-2016", subtitle = "Trips to Russia are in light blue",y = "Number of Trips")  + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) 
+```
 
 
 
