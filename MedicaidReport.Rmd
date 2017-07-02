@@ -1,0 +1,213 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [Dataset](https://data.medicaid.gov/State-Drug-Utilization/State-Drug-Utilization-Data-2016/3v6v-qk5s) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+This is a [description of the dataset](file:///C:/Users/Chris%20Iyer/Downloads/Drug_Utilization_Data_Descriptions.pdf)
+
+```{r}
+library(knitr)
+library(dplyr)
+library(rvest)
+library(Hmisc)
+```
+
+```{r}
+medicaid <- read.csv("medicaid.csv", header = T, stringsAsFactors = F)
+```
+
+
+
+
+
+```{r}
+Narcotics <- read_html("https://www.drugs.com/drug-class/narcotic-analgesics.html")
+Drug_Names <- Narcotics %>% html_nodes("br+ .small a") %>% html_text()
+
+head(Drug_Names)
+str(Drug_Names)
+```
+
+
+```{r}
+Medicaid <- as.data.frame(medicaid)
+str(Medicaid)
+
+
+kable(head(Medicaid))
+
+```
+
+```{r}
+
+Drug_Names <- toupper(Drug_Names)
+
+Drugs <- c("MORPHINE",
+           #"OXYCODONE", 
+           #"FENTANYL",     
+"OXYMORPHONE", 
+"HYDROMORPHONE", 
+#"MEPERIDINE",   
+#"METHADONE", 
+"BUPRENORPHINE", 
+#"OPIUM",        
+"TRAMADOL", 
+"HYDROCODONE", 
+"BUTORPHANOL",  
+"PROPOXYPHENE", 
+"LEVORPHANOL",
+#"NALBUPHINE",   
+"TAPENTADOL",
+#"ALFENTANIL",    
+"PENTAZOCINE",  
+#"SUFENTANIL", 
+"REMIFENTANIL")
+
+# Drugs1 <- c("MORPHINE",     
+# "OXYMORPHONE", 
+# "HYDROMORPHONE","BUPRENORPHINE","TRAMADOL", 
+# "HYDROCODONE", 
+# "BUTORPHANOL",  
+# "PROPOXYPHENE", 
+# "LEVORPHANOL",   
+# "TAPENTADOL",    
+# "PENTAZOCINE", 
+# "REMIFENTANIL")
+
+medicaid1 <- Medicaid %>% filter(Product.Name %in% Drugs)
+dim(medicaid1)
+#medicaid2 <- Medicaid %>% filter(Product.Name %in% Drugs1)
+
+unique(medicaid1$Product.Name)
+
+```
+
+```{r}
+MORPHINE <- Medicaid %>% filter(grepl("MORPHINE", Product.Name))
+dim(MORPHINE)
+OXYMORPHONE <- Medicaid %>% filter(grepl("OXYMORPHONE", Product.Name))
+
+HYDROMORPHONE <- Medicaid %>% filter(grepl("HYDROMORPHONE", Product.Name))
+
+BUPRENORPHINE <- Medicaid %>% filter(grepl("BUPRENORPHINE", Product.Name))
+TRAMADOL <- Medicaid %>% filter(grepl("TRAMADOL", Product.Name))
+HYDROCODONE <- Medicaid %>% filter(grepl("HYDROCODONE", Product.Name))
+BUTORPHANOL  <- Medicaid %>% filter(grepl("BUTORPHANOL", Product.Name))
+PROPOXYPHENE <- Medicaid %>% filter(grepl("PROPOXYPHENE", Product.Name))
+LEVORPHANOL  <- Medicaid %>% filter(grepl("LEVORPHANOL", Product.Name)) 
+TAPENTADOL <- Medicaid %>% filter(grepl("TAPENTADOL", Product.Name))
+PENTAZOCINE <- Medicaid %>% filter(grepl("PENTAZOCINE", Product.Name))
+REMIFENTANIL <- Medicaid %>% filter(grepl("REMIFENTANIL", Product.Name))
+``` 
+
+```{r}
+allDrugs <- rbind.data.frame(medicaid1, MORPHINE, OXYMORPHONE, HYDROMORPHONE, BUPRENORPHINE, TRAMADOL, HYDROCODONE, BUTORPHANOL, PROPOXYPHENE, LEVORPHANOL, TAPENTADOL, PENTAZOCINE, REMIFENTANIL )
+```
+
+```{r}
+dim(medicaid1)
+dim(MORPHINE)
+dim(OXYMORPHONE)
+dim(HYDROMORPHONE)
+dim(BUPRENORPHINE)
+dim(TRAMADOL)
+dim(HYDROCODONE)
+dim(BUTORPHANOL)
+dim(PROPOXYPHENE)
+dim(LEVORPHANOL)
+dim(TAPENTADOL)
+dim(PENTAZOCINE)
+dim(REMIFENTANIL)
+```
+
+
+
+```{r}
+dim(allDrugs)
+head(allDrugs)
+allDrugs <- allDrugs %>% arrange(State)
+
+
+
+
+allDrugs1 <- allDrugs %>% group_by(State, Number.of.Prescriptions) 
+head(allDrugs1, 25)
+allDrugs2 <-  allDrugs %>% select(State, Number.of.Prescriptions)
+dim(allDrugs2)
+allDrugs2 <- allDrugs1 %>% group_by(Number.of.Prescriptions) %>% summarise(count = n())
+allDrugs2
+```
+
+
+```{r}
+
+AK <- allDrugs %>% filter(State == "AK") 
+dim(AK)
+sum(is.na(AK$Number.of.Prescriptions))
+summary(AK)
+AKNoNA <- allDrugs %>% na.omit()  
+head(AK)
+sumAK <- sum(AK$Number.of.Prescriptions)
+#Number of NA
+480/826
+```
+
+```{r}
+ME <- allDrugs %>% filter(State == "ME") 
+dim(ME)
+sum(is.na(ME$Number.of.Prescriptions))
+summary(ME)
+MENoNA <- allDrugs %>% na.omit()  
+dim(MENoNA)
+
+head(ME)
+sumME
+#Number of NA
+293/688
+```
+
+
+```{r}
+CA <- allDrugs %>% filter(State == "CA") 
+dim(CA)
+sum(is.na(CA$Number.of.Prescriptions))
+summary(CA)
+CANoNA <- allDrugs %>% na.omit()  
+dim(CANoNA)
+
+head(CA)
+
+#Number of NA
+1275/2904
+```
+
+
+
+```{r, fig.height=8, fig.width=10}
+library(Amelia)
+missmap(allDrugs, main="Missing Data Map")
+```
+
+```{r}
+head(allDrugs)
+```
+
+
+```{r}
+library(reshape2)
+library(ggplot2)
+
+allDrugsNoNA <- allDrugs %>% na.omit()
+head(allDrugsNoNA)
+
+ggplot_missing <- allDrugs %>% filter(Number.of.Prescriptions == "NA")
+head(ggplot_missing)
+
+new_DF <- allDrugs[rowSums(is.na(allDrugs)) > 0,]
+new_DF[new_DF=='NA'] <- NA
+head(new_DF)
+
+```
+
