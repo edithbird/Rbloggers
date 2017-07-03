@@ -252,7 +252,7 @@ head(new_DF)
 
 
 
-```{r, fig.height=75, fig.width=10}
+```{r, eval=FALSE, fig.height=75, fig.width=10, include=FALSE}
 
 ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions, fill = factor(State))) + geom_histogram(binwidth = 150) + stat_bin(binwidth = 100, geom="text", aes(label=..count..), angle = 90) + facet_wrap(~ State, ncol = 1) +  theme_bw() + scale_x_continuous(limits = c(0, 5000)) 
 
@@ -283,10 +283,12 @@ p7
 
 
 ```{r}
-x <- allDrugs %>% group_by(State) %>% summarise(variable = sum(is.na(Number.of.Prescriptions))/prod(dim(Number.of.Prescriptions))) %>% rename(state = State)
+library(dplyr)
+head(allDrugs)
+x <- allDrugs %>% group_by(state = State) %>% summarise(variable = sum(is.na(Number.of.Prescriptions))/prod(dim(Number.of.Prescriptions)))
 x
 
-y <- allDrugs %>% group_by(State) %>% summarise(count = n())
+y <- allDrugs %>% group_by(State) %>% dplyr::summarise(count = n())
 y
 
 z <- cbind(x,y)
@@ -297,9 +299,9 @@ z
 ```
 
 
-```{r, fig.height=26, fig.width=10}
+```{r, fig.height=56, fig.width=10}
 ggplot(allDrugsNoNA,aes(x=Number.of.Prescriptions)) + 
-    stat_bin(binwidth=500, geom="text", aes(label=..count..), vjust=-1.5, angle = 90) + ylim(c(0, 400)) +  facet_wrap(~State, ncol = 2) + scale_x_continuous(limits = c(-1000, 6000), breaks = c(-1000, 0, 1000, 2000, 3000, 4000, 5000) ) +
+    stat_bin(binwidth=500, geom="text", aes(label=..count..), vjust=-1.5, angle = 90) + ylim(c(-100, 550)) +  facet_wrap(~State, ncol = 1) + scale_x_continuous(limits = c(-2000, 6000), breaks = c(-2000,-1000, 0, 500,1000, 1500,2000, 2500,3000, 3500,4000, 4500,5000) ) +
   theme(axis.text.x=element_text(angle=90,hjust=1)) 
 
 
@@ -309,6 +311,14 @@ ggplot(allDrugsNoNA,aes(x=Number.of.Prescriptions)) +
 
 ```{r}
 ggplot(z, aes(x = State, y = PercentNA)) + geom_bar(stat = "identity")
+```
+```{r, fig.height=50, fig.width=10}
+
+
+ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions )) + 
+  geom_histogram(aes(fill = ..count..), breaks = seq(0,1000, by = 100),binwidth=100, colour="blue", fill = "blue", alpha = 0.2, lwd=0.2) +
+  stat_bin(aes(label = ..count..),geom="text", colour="black", vjust=-1, size=4.5, breaks = c(0, 100, 200,300,400,500, 600,700,800,900,1000)) +
+  scale_x_continuous(limits = c(0, 1000),labels = c(0, 100, 200,300,400,500, 600,700,800,900,1000), breaks = c(0, 100, 200,300,400,500, 600,700,800,900,1000)) + scale_y_continuous(limits = c(0,500), labels = c(0, 100, 200, 300, 400, 500))+ facet_wrap(~State, ncol = 2) + theme(axis.text.x=element_text(angle=90,hjust=0)) 
 ```
 
 
