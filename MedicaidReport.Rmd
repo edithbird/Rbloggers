@@ -11,7 +11,7 @@ This is a [description of the dataset](file:///C:/Users/Chris%20Iyer/Downloads/D
 library(knitr)
 library(dplyr)
 library(rvest)
-library(Hmisc)
+library(ggplot2)
 ```
 
 ```{r}
@@ -26,8 +26,6 @@ medicaid <- read.csv("medicaid.csv", header = T, stringsAsFactors = F)
 Narcotics <- read_html("https://www.drugs.com/drug-class/narcotic-analgesics.html")
 Drug_Names <- Narcotics %>% html_nodes("br+ .small a") %>% html_text()
 
-head(Drug_Names)
-str(Drug_Names)
 ```
 
 
@@ -35,62 +33,39 @@ str(Drug_Names)
 Medicaid <- as.data.frame(medicaid)
 str(Medicaid)
 
-
 kable(head(Medicaid))
 
 ```
 
 ```{r}
 
-Drug_Names <- toupper(Drug_Names)
-
+Drug_Names <- unique(toupper(Drug_Names))
 Drugs <- c("MORPHINE",
-           #"OXYCODONE", 
-           #"FENTANYL",     
 "OXYMORPHONE", 
 "HYDROMORPHONE", 
-#"MEPERIDINE",   
-#"METHADONE", 
 "BUPRENORPHINE", 
-#"OPIUM",        
 "TRAMADOL", 
 "HYDROCODONE", 
 "BUTORPHANOL",  
 "PROPOXYPHENE", 
 "LEVORPHANOL",
-#"NALBUPHINE",   
 "TAPENTADOL",
-#"ALFENTANIL",    
 "PENTAZOCINE",  
-#"SUFENTANIL", 
 "REMIFENTANIL")
 
-# Drugs1 <- c("MORPHINE",     
-# "OXYMORPHONE", 
-# "HYDROMORPHONE","BUPRENORPHINE","TRAMADOL", 
-# "HYDROCODONE", 
-# "BUTORPHANOL",  
-# "PROPOXYPHENE", 
-# "LEVORPHANOL",   
-# "TAPENTADOL",    
-# "PENTAZOCINE", 
-# "REMIFENTANIL")
-
-medicaid1 <- Medicaid %>% filter(Product.Name %in% Drugs)
+medicaid1 <- Medicaid %>% filter(Product.Name %in% Drug_Names)
 dim(medicaid1)
-#medicaid2 <- Medicaid %>% filter(Product.Name %in% Drugs1)
-
 unique(medicaid1$Product.Name)
+
+
+
 
 ```
 
 ```{r}
 MORPHINE <- Medicaid %>% filter(grepl("MORPHINE", Product.Name))
-dim(MORPHINE)
 OXYMORPHONE <- Medicaid %>% filter(grepl("OXYMORPHONE", Product.Name))
-
 HYDROMORPHONE <- Medicaid %>% filter(grepl("HYDROMORPHONE", Product.Name))
-
 BUPRENORPHINE <- Medicaid %>% filter(grepl("BUPRENORPHINE", Product.Name))
 TRAMADOL <- Medicaid %>% filter(grepl("TRAMADOL", Product.Name))
 HYDROCODONE <- Medicaid %>% filter(grepl("HYDROCODONE", Product.Name))
@@ -104,6 +79,7 @@ REMIFENTANIL <- Medicaid %>% filter(grepl("REMIFENTANIL", Product.Name))
 
 ```{r}
 allDrugs <- rbind.data.frame(medicaid1, MORPHINE, OXYMORPHONE, HYDROMORPHONE, BUPRENORPHINE, TRAMADOL, HYDROCODONE, BUTORPHANOL, PROPOXYPHENE, LEVORPHANOL, TAPENTADOL, PENTAZOCINE, REMIFENTANIL )
+dim(allDrugs)
 ```
 
 ```{r}
@@ -127,19 +103,49 @@ dim(REMIFENTANIL)
 ```{r}
 dim(allDrugs)
 head(allDrugs)
-allDrugs <- allDrugs %>% arrange(State)
+allDrugs <- allDrugs %>% arrange(desc(State))
+head(allDrugs)
+allDrugs %>% group_by(State) %>% summarise_each(funs(sum), Number.of.Prescriptions, Medicaid.Amount.Reimbursed)
 
 
 
 
-allDrugs1 <- allDrugs %>% group_by(State, Number.of.Prescriptions) 
-head(allDrugs1, 25)
-allDrugs2 <-  allDrugs %>% select(State, Number.of.Prescriptions)
-dim(allDrugs2)
-allDrugs2 <- allDrugs1 %>% group_by(Number.of.Prescriptions) %>% summarise(count = n())
-allDrugs2
+allDrugs %>% 
+  group_by(State) %>% 
+  summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
+
+
+
+noXX <- allDrugs %>% filter(State != "XX") %>% 
+  group_by(State) %>% 
+  summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
+
+XX <- allDrugs %>% filter(State == "XX") %>% 
+  group_by(State) %>% 
+  summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
+#what is XX?
+sum(noXX$sumNumber)/XX$sumNumber
+XX$sumNumber/sum(noXX$sumNumber)
+XX$sumAmount/sum(noXX$sumAmount)
+sum(noXX$sumAmount)/XX$sumAmount
 ```
 
+```{r}
+allDrugs %>% filter() %>% group_by(State, Quarter) %>% summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE))
+
+allDrugs %>% group_by(State, Quarter) %>% summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE))
+```
+
+
+Quarterly Count of NA Values
+
+```{r}
+Subs1<-subset(allDrugs, (is.na(allDrugs[,11]))) 
+
+Subs2 <- Subs1%>% group_by(State, Quarter) %>% summarise(count = n())
+
+head(Subs2, 28)
+```
 
 ```{r}
 
@@ -201,13 +207,27 @@ library(ggplot2)
 
 allDrugsNoNA <- allDrugs %>% na.omit()
 head(allDrugsNoNA)
-
-ggplot_missing <- allDrugs %>% filter(Number.of.Prescriptions == "NA")
-head(ggplot_missing)
-
 new_DF <- allDrugs[rowSums(is.na(allDrugs)) > 0,]
 new_DF[new_DF=='NA'] <- NA
 head(new_DF)
+
+```
+
+
+
+
+
+
+```{r, fig.height=25, fig.width=10}
+
+ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions, fill = factor(Quarter))) + geom_histogram(binwidth = 50) + facet_wrap(~ State, ncol = 3) + scale_x_continuous(limits = c(0, 500)) + theme_bw() 
+
+ # ggplot(allDrugsNoNA, aes(x = Quarter)) + geom_density() + 
+ #  facet_wrap(~State, ncol = 3)
+
+#ggplot(allDrugsNoNA, aes(x=Number.of.Prescriptions)) + geom_freqpoly() + facet_wrap(~State)
+
+ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions, fill = factor(Quarter)))+  geom_bar(aes(y=..density..), position='stack', binwidth = 50) + ylab("Percentage") + facet_wrap(~ State, ncol = 3) + scale_x_continuous(limits = c(0, 500)) + theme_bw() 
 
 ```
 
