@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Medicaid Outpatient Narcotics"
 output: html_notebook
 ---
 
@@ -98,46 +98,58 @@ dim(PENTAZOCINE)
 dim(REMIFENTANIL)
 ```
 
-
+All the Narcotics in All States
 
 ```{r}
 dim(allDrugs)
 head(allDrugs)
 allDrugs <- allDrugs %>% arrange(desc(State))
 head(allDrugs)
-allDrugs %>% group_by(State) %>% summarise_each(funs(sum), Number.of.Prescriptions, Medicaid.Amount.Reimbursed)
 
+```
+Total number of prescriptions
 
-
-
+```{r}
 allDrugs %>% 
   group_by(State) %>% 
   summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
+```
 
+All Drugs with State XX removed
 
-
+```{r}
 noXX <- allDrugs %>% filter(State != "XX") %>% 
   group_by(State) %>% 
   summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
 
+```
+
+XX
+
+```{r}
 XX <- allDrugs %>% filter(State == "XX") %>% 
   group_by(State) %>% 
   summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
-#what is XX?
-sum(noXX$sumNumber)/XX$sumNumber
-XX$sumNumber/sum(noXX$sumNumber)
-XX$sumAmount/sum(noXX$sumAmount)
-sum(noXX$sumAmount)/XX$sumAmount
 ```
 
-```{r}
-allDrugs %>% filter() %>% group_by(State, Quarter) %>% summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE))
 
+#what is XX?
+
+```{r}
+sum(noXX$sumNumber)/XX$sumNumber
+sum(noXX$sumAmount)/XX$sumAmount
+XX$sumNumber/sum(noXX$sumNumber)
+XX$sumAmount/sum(noXX$sumAmount)
+```
+
+Quarterly number of prescriptions
+
+```{r}
 allDrugs %>% group_by(State, Quarter) %>% summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE))
 ```
 
-
-Quarterly Count of NA Values
+Quarterly Count of NA Values per state
+We don't know the number of prescriptions for each NA value
 
 ```{r}
 Subs1<-subset(allDrugs, (is.na(allDrugs[,11]))) 
@@ -147,87 +159,143 @@ Subs2 <- Subs1%>% group_by(State, Quarter) %>% summarise(count = n())
 head(Subs2, 28)
 ```
 
+Number of NA entries in the allDrugs dataset.
+
+```{r}
+MENoNA <- allDrugs %>% na.omit() 
+dim(allDrugs)
+dim(MENoNA)
+28317/62034
+```
+
+
+
+Arkansas
+
 ```{r}
 
 AK <- allDrugs %>% filter(State == "AK") 
 dim(AK)
+#There are 826 entries in AK
 sum(is.na(AK$Number.of.Prescriptions))
 summary(AK)
+#Summary shows there are 480 NA entries
 AKNoNA <- allDrugs %>% na.omit()  
 head(AK)
-sumAK <- sum(AK$Number.of.Prescriptions)
-#Number of NA
+#Percentage of values that are NA
 480/826
 ```
+
+Maine
 
 ```{r}
 ME <- allDrugs %>% filter(State == "ME") 
 dim(ME)
 sum(is.na(ME$Number.of.Prescriptions))
 summary(ME)
-MENoNA <- allDrugs %>% na.omit()  
-dim(MENoNA)
-
 head(ME)
 sumME
 #Number of NA
 293/688
 ```
 
+CA
 
 ```{r}
 CA <- allDrugs %>% filter(State == "CA") 
 dim(CA)
 sum(is.na(CA$Number.of.Prescriptions))
 summary(CA)
-CANoNA <- allDrugs %>% na.omit()  
-dim(CANoNA)
-
 head(CA)
-
 #Number of NA
 1275/2904
 ```
 
 
+```{r, fig.height=25, fig.width=10}
+ggplot(allDrugs, aes(x = (sum(is.na(Number.of.Prescriptions))/Number.of.Prescriptions), group = factor(State))) + geom_bar() + facet_wrap(~State, ncol = 3)
+```
+
+
+Visualization of missing values
 
 ```{r, fig.height=8, fig.width=10}
 library(Amelia)
-missmap(allDrugs, main="Missing Data Map")
+missmap(AK, main="Missing Data Map")
 ```
 
 ```{r}
 head(allDrugs)
+dim(allDrugs)
 ```
+
+
 
 
 ```{r}
 library(reshape2)
 library(ggplot2)
-
+library(plyr)
 allDrugsNoNA <- allDrugs %>% na.omit()
 head(allDrugsNoNA)
+dim(allDrugsNoNA)
+allDrugsNoNA$z <- ave(allDrugsNoNA$Number.of.Prescriptions, allDrugsNoNA$State, FUN=scale)
+head(allDrugsNoNA)
+
 new_DF <- allDrugs[rowSums(is.na(allDrugs)) > 0,]
 new_DF[new_DF=='NA'] <- NA
 head(new_DF)
+
 
 ```
 
 
 
 
+```{r}
+ggplot(allDrugsNoNA, aes(x = z, fill = factor(State)))+  geom_bar(aes(y=..density..), position='stack', binwidth = 50) + ylab("Percentage") + facet_wrap(~ State, ncol = 3) + theme_bw() 
+
+```
 
 
 ```{r, fig.height=25, fig.width=10}
 
-ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions, fill = factor(Quarter))) + geom_histogram(binwidth = 50) + facet_wrap(~ State, ncol = 3) + scale_x_continuous(limits = c(0, 500)) + theme_bw() 
+ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions, fill = factor(State))) + geom_histogram(binwidth = 150) + facet_wrap(~ State, ncol = 3) +  theme_bw() 
 
  # ggplot(allDrugsNoNA, aes(x = Quarter)) + geom_density() + 
  #  facet_wrap(~State, ncol = 3)
 
 #ggplot(allDrugsNoNA, aes(x=Number.of.Prescriptions)) + geom_freqpoly() + facet_wrap(~State)
 
-ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions, fill = factor(Quarter)))+  geom_bar(aes(y=..density..), position='stack', binwidth = 50) + ylab("Percentage") + facet_wrap(~ State, ncol = 3) + scale_x_continuous(limits = c(0, 500)) + theme_bw() 
 
+```
+
+
+
+```{r, fig.height=25, fig.width=10}
+head(allDrugsNoNA)
+ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions, group= factor(State))) + geom_histogram() + facet_wrap(~ State, ncol = 3) + theme_bw() +scale_x_continuous(c(0, 1000))
+```
+
+```{r}
+x <- allDrugs %>% group_by(State) %>% summarise(variable = sum(is.na(Number.of.Prescriptions))/prod(dim(Number.of.Prescriptions))) %>% rename(state = State)
+x
+
+y <- allDrugs %>% group_by(State) %>% summarise(count = n())
+y
+
+z <- cbind(x,y)
+
+z <- z %>% mutate(PercentNA = variable/count) %>% select(State, PercentNA)
+z
+
+```
+
+
+
+
+```{r}
+group_by(dataIn, replicate) %>% 
+    summarise(ratio = quant[group=="case"]/quant[group=="controls"])
 ```
 
