@@ -115,6 +115,17 @@ allDrugs %>%
   summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
 ```
 
+
+Percent of NA Values per State
+```{r}
+allDrugsXX <- allDrugs %>% group_by(State) %>% summarise(mean(is.na(Number.of.Prescriptions)))
+allDrugsXX
+```
+
+
+
+
+
 All Drugs with State XX removed, NAs eliminated
 
 ```{r}
@@ -382,5 +393,6 @@ frequencyTableBind <- as.data.frame(frequencyTableBind)
 dim(frequencyTableBind)
 frequencyTableBind
 frequencyTableBind["Bins"] <- seq(0, 39500, by = 500)
+frequencyTableBind
 ```
 
