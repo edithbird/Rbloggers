@@ -1,3 +1,4 @@
+
 ---
 title: "Medicaid Outpatient Narcotics"
 output: html_notebook
@@ -154,21 +155,33 @@ We don't know the number of prescriptions for each NA value
 
 ```{r}
 Subs1<-subset(allDrugs, (is.na(allDrugs[,11]))) 
+#Total number of NA
+dim(Subs1)
 
 Subs2 <- Subs1%>% group_by(State, Quarter) %>% summarise(NA_count = n())
-
+dim(Subs2)
 head(Subs2, 28)
 
-
+Subs3 <- Subs1 %>% group_by(State) %>% summarise(NA_count = n())
+dim(Subs3)
+kable(Subs3)
 ```
 
-Number of NA entries in the allDrugs dataset.
+Percent of NA entries in the allDrugs dataset. 54%
 
 ```{r}
 NoNA <- allDrugs %>% na.omit() 
+head(NoNA)
+
 dim(allDrugs)
 dim(NoNA)
 1-(28317/62034)
+```
+
+
+
+```{r}
+
 ```
 
 
@@ -186,6 +199,7 @@ summary(AK)
 head(AK)
 #Percentage of values that are NA
 480/826
+hist(AK$Number.of.Prescriptions)
 ```
 
 Percent NA in Maine
@@ -198,6 +212,7 @@ summary(ME)
 head(ME)
 #Percent NA in Maine
 293/688
+hist(ME$Number.of.Prescriptions)
 ```
 
 CA
@@ -210,6 +225,7 @@ summary(CA)
 head(CA)
 #Percent of NA
 1275/2904
+hist(CA$Number.of.Prescriptions)
 ```
 
 
@@ -323,5 +339,48 @@ ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions )) +
 
 
 
+```{r}
+dat <-structure(list(sex = structure(c(1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), .Label = c("male", 
+"female"), class = "factor"), A = c(1, 2, 0, 2, 1, 2, 2, 0, 2, 
+0, 1, 2, 2, 0, 0, 2, 0, 0, 0, 2), B = c(0, 0, 0, 0, 0, 2, 0, 
+0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0), C = c(1, 2, 1, 0, 0, 
+2, 1, 1, 0, 1, 1, 0, 1, 2, 1, 2, 0, 2, 1, 2), D = c(2, 2, 0, 
+2, 2, 2, 1, 0, 1, 1, 1, 0, 1, 2, 0, 0, 1, 1, 1, 0), E = c(0, 
+0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 2, 2), F = c(2, 
+2, 1, 2, 1, 2, 2, 0, 1, 2, 0, 1, 2, 2, 0, 1, 2, 2, 2, 2)), .Names = c("sex", 
+"A", "B", "C", "D", "E", "F"), variable.labels = structure(c("sex", 
+"zenuwac", "panieke", "gespann", "rustelo", "angstig", "onzeker"
+), .Names = c("sex", "anx01", "anx02", "anx03", "anx04", "anx05", 
+"anx06")), codepage = 20127L, row.names = c(NA, 20L), class = "data.frame")
+str(dat)
+dat
+do.call(grid.)
+```
 
+[How to do a frequency table in base R](http://www.r-tutor.com/elementary-statistics/quantitative-data/frequency-distribution-quantitative-data)
+
+```{r}
+head(faithful)
+head(allDrugsNoNA)
+durationF <- faithful$eruptions
+range(durationF)
+durationD <-  allDrugsNoNA$Number.of.Prescriptions
+range(durationD)
+breaksF <- seq(1.5, 5.5, by = 0.5)
+breaksD <- seq(0, 40000, by = 500)
+breaksD
+duration.cutF <- cut(durationF, breaksF, right = F)
+duration.cutD <- cut(durationD, breaksD, right = F)
+options(scipen=999)
+duration.freqF <- table(duration.cutF)
+cbind(duration.freqF)
+
+duration.freqD <- table(duration.cutD)
+frequencyTableBind <- cbind(duration.freqD)
+frequencyTableBind <- as.data.frame(frequencyTableBind)
+dim(frequencyTableBind)
+frequencyTableBind
+frequencyTableBind["Bins"] <- seq(0, 39500, by = 500)
+```
 
