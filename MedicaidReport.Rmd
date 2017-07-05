@@ -111,19 +111,39 @@ head(allDrugs, 35)
 Total number of prescriptions by state, NAs eliminated
 
 ```{r}
-allDrugs %>% 
+NAEliminated <- allDrugs %>% 
   group_by(State) %>% 
   summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
+NAEliminated
 ```
 
 
 Percent of NA Values per State
 
 ```{r}
-allDrugsXX <- allDrugs %>% group_by(State) %>% summarise(mean(is.na(Number.of.Prescriptions)))
+allDrugsXX <- allDrugs %>% group_by(State) %>% summarise(meanNA = mean(is.na(Number.of.Prescriptions)))
 allDrugsXX
 ```
 
+```{r}
+numberNAValueState <- allDrugs %>% group_by(State) %>% summarise(SumNA = sum(is.na(Number.of.Prescriptions)))
+numberNAValueState
+```
+
+State Portion
+
+```{r}
+statePortion <- NAEliminated %>% mutate(portion = sumAmount/sum(sumAmount))
+statePortion
+ggplot(statePortion, aes(State, portion)) + geom_bar()
+bp <- ggplot(statePortion, aes(x="", y=portion, fill=State)) + geom_bar(width = 1, stat = "identity")
+bp + coord_polar("y", start=0)
+```
+
+
+```{r}
+
+```
 
 All Drugs with State XX removed, NAs eliminated
 
@@ -137,6 +157,9 @@ allDrugs <- inner_join(allDrugs, Population)
 allDrugs
 allDrugsnoXX <- inner_join(States, Population)
 allDrugsnoXX
+
+averageRxPP <- allDrugsnoXX %>% summarise(sum(sumNumber)/sum(StatePopul))
+
 ```
 
 Number of prescriptions per capita
@@ -219,54 +242,49 @@ ggplot(dat.m, aes(State, value, fill=variable)) +
   geom_bar(position="dodge",stat="identity")
 
 
+
 ```
 
+```{r}
+names(DeathandRxperCapperState)
+forCorr <- DeathandRxperCapperState %>% select(State, zRx, zOD)
+```
 
-forCorr <- DeathPerCap %>% select(State, RxPP, ODPerCap)
+```{r}
 library(Hmisc)
 forCorr
-m1<-lm(log(ODPerCap) ~ RxPP,data=forCorr)
+m1<-lm(zOD ~ zRx,data=forCorr)
 summary(m1)
-plot(m1)
 
 
+```
 
-ggplot(DeathPerCap, aes(x=RxPP, y=ODPerCap)) +
+```{r}
+plot1 <- ggplot(forCorr, aes(x=zRx, y=zOD)) +
     geom_point(shape=1)      # Use hollow circles
+```
 
-ggplot(DeathPerCap, aes(x=RxPP, y=ODPerCap)) +
+```{r}
+plot1 +
     geom_point(shape=1) +    # Use hollow circles
     geom_smooth(method=lm)   # Add linear regression line 
                              #  (by default includes 95% confidence region)
-
-ggplot(DeathPerCap, aes(x=RxPP, y=ODPerCap)) +
-    geom_point(shape=1) +    # Use hollow circles
+```
+```{r}
+plot1 + geom_point(shape=1) +    # Use hollow circles
     geom_smooth(method=lm,   # Add linear regression line
                 se=FALSE)    # Don't add shaded confidence region
+```
+
+```{r}
+plot1 + geom_point(shape=1) + geom_smooth()
+```
+
+```{r}
+plot1 + geom_smooth(method = "lm", se=FALSE, color="black", formula = y ~ x) + geom_point()
+```
 
 
-ggplot(DeathPerCap, aes(x=RxPP, y=ODPerCap)) +
-    geom_point(shape=1) +    # Use hollow circles
-    geom_smooth()            # Add a loess smoothed fit curve with confidence region
-#> `geom_smooth()` using method = 'loess'
-
-
-ggplot(DeathPerCap, aes(x=RxPP, y=ODPerCap)) +  geom_smooth(method = "lm", se=FALSE, color="black", formula = y ~ x) + geom_point()
-
-
-
-linear.model <-lm(ODPerCap ~ RxPP, DeathPerCap)
-log.model <-lm(log(ODPerCap) ~ RxPP, DeathPerCap)
-exp.model <-lm(ODPerCap ~ exp(RxPP), DeathPerCap)
-
-log.model.df <- data.frame(x = DeathPerCap$RxPP,
-                           y = exp(fitted(log.model)))
-log.model.df
-ggplot(DeathPerCap, aes(x=RxPP, y=ODPerCap)) + 
-  geom_point() +
-  geom_smooth(method="lm", aes(color="Exp Model"), formula= (ODPerCap ~ exp(RxPP)), se=FALSE, linetype = 1) +
-  geom_line(data = log.model.df, aes(x, y, color = "Log Model"), size = 1, linetype = 2) + 
-  guides(color = guide_legend("Model Type"))
 
 
 
@@ -514,4 +532,10 @@ frequencyTableBind
 ```
 
 
+
+###
+
+```{r}
+
+```
 
