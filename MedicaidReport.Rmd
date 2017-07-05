@@ -15,13 +15,14 @@ library(rvest)
 library(ggplot2)
 ```
 
+
+###Read in Data
+
 ```{r}
 medicaid <- read.csv("medicaid.csv", header = T, stringsAsFactors = F)
 ```
 
-
-
-
+###Retrieve narcotics list
 
 ```{r}
 Narcotics <- read_html("https://www.drugs.com/drug-class/narcotic-analgesics.html")
@@ -29,6 +30,41 @@ Drug_Names <- Narcotics %>% html_nodes("br+ .small a") %>% html_text()
 
 ```
 
+Population Data
+
+```{r}
+Pops <- read_html("http://worldpopulationreview.com/states/")
+StateName <- Pops %>% html_nodes("td:nth-child(2)") %>% html_text()
+StateName
+StatePopul <- Pops %>% html_nodes("td~ td+ td") %>% html_text()
+StatePopul
+StatePopul <- as.numeric(gsub(",", "", StatePopul))
+Population <- cbind.data.frame(StateName, StatePopul)
+str(Population)
+Population
+
+
+```
+
+library(microbenchmark)
+
+
+
+
+Population
+
+Population$StatePopul <- as.numeric(as.character( sub(",", ".", Population$StatePopul)))
+Population
+
+
+
+```{r}
+api.key.install(key="d1f9018c1bee6319d1916a5ac7381aa6aea0c9bb")
+library(acs)
+acs.lookup(endyear = 2011,table.number = "S2601A")
+```
+
+###Convert medicaid data to a dataframe
 
 ```{r}
 Medicaid <- as.data.frame(medicaid)
@@ -37,6 +73,7 @@ str(Medicaid)
 kable(head(Medicaid))
 
 ```
+###Filter some of the narcotics from the medicaid dataframe
 
 ```{r}
 
@@ -57,13 +94,6 @@ Drugs <- c("MORPHINE",
 medicaid1 <- Medicaid %>% filter(Product.Name %in% Drug_Names)
 dim(medicaid1)
 unique(medicaid1$Product.Name)
-
-
-
-
-```
-
-```{r}
 MORPHINE <- Medicaid %>% filter(grepl("MORPHINE", Product.Name))
 OXYMORPHONE <- Medicaid %>% filter(grepl("OXYMORPHONE", Product.Name))
 HYDROMORPHONE <- Medicaid %>% filter(grepl("HYDROMORPHONE", Product.Name))
@@ -76,27 +106,13 @@ LEVORPHANOL  <- Medicaid %>% filter(grepl("LEVORPHANOL", Product.Name))
 TAPENTADOL <- Medicaid %>% filter(grepl("TAPENTADOL", Product.Name))
 PENTAZOCINE <- Medicaid %>% filter(grepl("PENTAZOCINE", Product.Name))
 REMIFENTANIL <- Medicaid %>% filter(grepl("REMIFENTANIL", Product.Name))
-``` 
+```
+
+###Bind narcotics into a dataframe
 
 ```{r}
 allDrugs <- rbind.data.frame(medicaid1, MORPHINE, OXYMORPHONE, HYDROMORPHONE, BUPRENORPHINE, TRAMADOL, HYDROCODONE, BUTORPHANOL, PROPOXYPHENE, LEVORPHANOL, TAPENTADOL, PENTAZOCINE, REMIFENTANIL )
 dim(allDrugs)
-```
-
-```{r}
-dim(medicaid1)
-dim(MORPHINE)
-dim(OXYMORPHONE)
-dim(HYDROMORPHONE)
-dim(BUPRENORPHINE)
-dim(TRAMADOL)
-dim(HYDROCODONE)
-dim(BUTORPHANOL)
-dim(PROPOXYPHENE)
-dim(LEVORPHANOL)
-dim(TAPENTADOL)
-dim(PENTAZOCINE)
-dim(REMIFENTANIL)
 ```
 
 All the Narcotics in All States
@@ -104,8 +120,8 @@ All the Narcotics in All States
 ```{r}
 dim(allDrugs)
 head(allDrugs)
-#allDrugs <- allDrugs %>% arrange(desc(State))
-
+allDrugs <- allDrugs %>% arrange(desc(Number.of.Prescriptions))
+head(allDrugs, 35)
 ```
 Total number of prescriptions by state, NAs eliminated
 
@@ -117,6 +133,7 @@ allDrugs %>%
 
 
 Percent of NA Values per State
+
 ```{r}
 allDrugsXX <- allDrugs %>% group_by(State) %>% summarise(mean(is.na(Number.of.Prescriptions)))
 allDrugsXX
@@ -133,9 +150,12 @@ States <- allDrugs %>% filter(State != "XX") %>%
   group_by(State) %>% 
   summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
 States
+head(allDrugs)
+
 ```
 
 XX: What is XX?
+
 ```{r}
 XX <- allDrugs %>% filter(State == "XX") %>% group_by(State) %>% 
   summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE)) 
@@ -161,22 +181,31 @@ head(allDrugs)
 Quarterly <- allDrugs %>% group_by(State, Quarter) %>% summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE))
 ```
 
-Quarterly Count of NA Values per state
+###Quarterly Count of NA Values per state
 We don't know the number of prescriptions for each NA value
 
 ```{r}
 Subs1<-subset(allDrugs, (is.na(allDrugs[,11]))) 
 #Total number of NA
 dim(Subs1)
+```
 
+###Quartrely NA for states
+
+```{r}
 Subs2 <- Subs1%>% group_by(State, Quarter) %>% summarise(NA_count = n())
 dim(Subs2)
 head(Subs2, 28)
+```
 
+#Number of NA for each state in 2016
+
+```{r}
 Subs3 <- Subs1 %>% group_by(State) %>% summarise(NA_count = n())
 dim(Subs3)
 kable(Subs3)
 ```
+
 
 Percent of NA entries in the allDrugs dataset. 54%
 
@@ -190,17 +219,9 @@ dim(NoNA)
 ```
 
 
+###Arkansas
 
 ```{r}
-
-```
-
-
-
-Arkansas
-
-```{r}
-
 AK <- allDrugs %>% filter(State == "AK") 
 dim(AK)
 #There are 826 entries in AK
@@ -213,7 +234,7 @@ head(AK)
 hist(AK$Number.of.Prescriptions)
 ```
 
-Percent NA in Maine
+###Percent NA in Maine
 
 ```{r}
 ME <- allDrugs %>% filter(State == "ME") 
@@ -226,7 +247,7 @@ head(ME)
 hist(ME$Number.of.Prescriptions)
 ```
 
-CA
+###CA
 
 ```{r}
 CA <- allDrugs %>% filter(State == "CA") 
@@ -244,12 +265,8 @@ Visualization of missing values
 
 ```{r, fig.height=8, fig.width=10}
 library(Amelia)
-missmap(AK, main="Missing Data Map")
-```
 
-```{r}
-head(allDrugs)
-dim(allDrugs)
+missmap(allDrugs, main="Missing Data Map")
 ```
 
 
@@ -271,26 +288,10 @@ head(new_DF)
 
 ```
 
-
-
-
-
-
-
-
-
 ```{r, eval=FALSE, fig.height=75, fig.width=10, include=FALSE}
 
 ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions, fill = factor(State))) + geom_histogram(binwidth = 150) + stat_bin(binwidth = 100, geom="text", aes(label=..count..), angle = 90) + facet_wrap(~ State, ncol = 1) +  theme_bw() + scale_x_continuous(limits = c(0, 5000)) 
 
- # ggplot(allDrugsNoNA, aes(x = Quarter)) + geom_density() + 
- #  facet_wrap(~State, ncol = 3)
-
-#ggplot(allDrugsNoNA, aes(x=Number.of.Prescriptions)) + geom_freqpoly() + facet_wrap(~State)
-
-# ggplot(allDrugsNoNA,aes(x=Number.of.Prescriptions, fill = factor(State))) + 
-#     stat_bin(binwidth= 50) + ylim(c(0, 500)) +  
-#     stat_bin(binwidth=1, geom="text", aes(label=..count..), vjust=-1.5) + facet_wrap(~ State) 
 ```
 
 [labels on ggplot](https://stackoverflow.com/questions/30057765/histogram-ggplot-show-count-label-for-each-bin-for-each-category)
@@ -330,15 +331,14 @@ z
 ggplot(allDrugsNoNA,aes(x=Number.of.Prescriptions)) + 
     stat_bin(binwidth=500, geom="text", aes(label=..count..), vjust=-1.5, angle = 90) + ylim(c(-100, 550)) +  facet_wrap(~State, ncol = 1) + scale_x_continuous(limits = c(-2000, 6000), breaks = c(-2000,-1000, 0, 500,1000, 1500,2000, 2500,3000, 3500,4000, 4500,5000) ) +
   theme(axis.text.x=element_text(angle=90,hjust=1)) 
-
-
-
 ```
 
 
 ```{r}
 ggplot(z, aes(x = State, y = PercentNA)) + geom_bar(stat = "identity")
 ```
+
+
 ```{r, fig.height=50, fig.width=10}
 
 
@@ -394,5 +394,9 @@ dim(frequencyTableBind)
 frequencyTableBind
 frequencyTableBind["Bins"] <- seq(0, 39500, by = 500)
 frequencyTableBind
+```
+
+```{r}
+library(acs)
 ```
 
