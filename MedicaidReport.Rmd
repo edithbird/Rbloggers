@@ -13,6 +13,7 @@ library(knitr)
 library(dplyr)
 library(rvest)
 library(ggplot2)
+library(gridExtra)
 ```
 
 
@@ -35,34 +36,18 @@ Population Data
 ```{r}
 Pops <- read_html("http://worldpopulationreview.com/states/")
 StateName <- Pops %>% html_nodes("td:nth-child(2)") %>% html_text()
-StateName
+#StateName
 StatePopul <- Pops %>% html_nodes("td~ td+ td") %>% html_text()
-StatePopul
+#StatePopul
 StatePopul <- as.numeric(gsub(",", "", StatePopul))
 Population <- cbind.data.frame(StateName, StatePopul)
-str(Population)
+#str(Population)
 Population
-
+Population["State"] <- state.abb[match(Population$StateName,state.name)]
+Population
 
 ```
 
-library(microbenchmark)
-
-
-
-
-Population
-
-Population$StatePopul <- as.numeric(as.character( sub(",", ".", Population$StatePopul)))
-Population
-
-
-
-```{r}
-api.key.install(key="d1f9018c1bee6319d1916a5ac7381aa6aea0c9bb")
-library(acs)
-acs.lookup(endyear = 2011,table.number = "S2601A")
-```
 
 ###Convert medicaid data to a dataframe
 
@@ -140,9 +125,6 @@ allDrugsXX
 ```
 
 
-
-
-
 All Drugs with State XX removed, NAs eliminated
 
 ```{r}
@@ -151,8 +133,143 @@ States <- allDrugs %>% filter(State != "XX") %>%
   summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
 States
 head(allDrugs)
+allDrugs <- inner_join(allDrugs, Population)
+allDrugs
+allDrugsnoXX <- inner_join(States, Population)
+allDrugsnoXX
+```
+
+Number of prescriptions per capita
+
+```{r}
+PerPerson <- allDrugsnoXX %>% mutate(RxPP = sumNumber/StatePopul, RxSpendingPP = sumAmount/StatePopul) %>% arrange(desc(RxPP))
+```
+
+
+```{r}
+OpiodDeath <- read.csv("OpiodDeath.csv", header = T)
+OpiodDeath <- OpiodDeath[c(1:51), c(1,4)]
+OpiodDeath$Number <- as.numeric(gsub(",", "", OpiodDeath$Number))
+OpiodDeath 
+```
+
+Opiod Death per capita
+
+```{r}
+DeathPerCap <- inner_join(PerPerson, OpiodDeath)
+DeathPerCap <-  DeathPerCap %>% mutate(ODPP = Number/StatePopul)
+DeathPerCap
 
 ```
+
+
+```{r}
+ODperCap <- ggplot(DeathPerCap, aes(x = State, y = ODPerCap, color = State, fill = State)) + geom_bar(stat = "identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r}
+RxPerP <- ggplot(DeathPerCap, aes(x = State, y = RxPP, color = State, fill = State)) + geom_bar(stat = "identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+grid.arrange(ODperCap, RxPerP, ncol=2)
+
+```
+
+where you subtract the mean and divide by the standard deviation of your variable
+
+```{r}
+
+meanOD <- mean(DeathPerCap$ODPerCap)
+meanOD
+sdOD <- sd(DeathPerCap$ODPerCap)
+sdOD
+
+```
+
+```{r}
+meanRx <- mean(DeathPerCap$RxPP)
+meanRx
+sdRx <- sd(DeathPerCap$RxPP)
+sdRx
+```
+
+where you subtract the mean and divide by the standard deviation of your variable
+
+```{r}
+names(DeathPerCap)
+DeathandRxperCapperState <- DeathPerCap 
+names(DeathandRxperCapperState)
+DeathandRxperCapperState <- DeathandRxperCapperState %>% mutate(zRx = ((RxPP - mean(RxPP))/ sd(RxPP)), zOD = ((ODPP - mean(ODPP))/sd(ODPP)))
+DeathandRxperCapperState
+```
+```{r}
+names(DeathandRxperCapperState)
+
+
+library(reshape2)
+
+
+newset <- DeathandRxperCapperState %>% select(State, zRx, zOD)
+newset
+dat.m <- melt(newset)
+range(dat.m$value)
+dat.m
+
+newset
+
+ggplot(dat.m, aes(State, value, fill=variable)) + 
+  geom_bar(position="dodge",stat="identity")
+
+
+```
+
+
+forCorr <- DeathPerCap %>% select(State, RxPP, ODPerCap)
+library(Hmisc)
+forCorr
+m1<-lm(log(ODPerCap) ~ RxPP,data=forCorr)
+summary(m1)
+plot(m1)
+
+
+
+ggplot(DeathPerCap, aes(x=RxPP, y=ODPerCap)) +
+    geom_point(shape=1)      # Use hollow circles
+
+ggplot(DeathPerCap, aes(x=RxPP, y=ODPerCap)) +
+    geom_point(shape=1) +    # Use hollow circles
+    geom_smooth(method=lm)   # Add linear regression line 
+                             #  (by default includes 95% confidence region)
+
+ggplot(DeathPerCap, aes(x=RxPP, y=ODPerCap)) +
+    geom_point(shape=1) +    # Use hollow circles
+    geom_smooth(method=lm,   # Add linear regression line
+                se=FALSE)    # Don't add shaded confidence region
+
+
+ggplot(DeathPerCap, aes(x=RxPP, y=ODPerCap)) +
+    geom_point(shape=1) +    # Use hollow circles
+    geom_smooth()            # Add a loess smoothed fit curve with confidence region
+#> `geom_smooth()` using method = 'loess'
+
+
+ggplot(DeathPerCap, aes(x=RxPP, y=ODPerCap)) +  geom_smooth(method = "lm", se=FALSE, color="black", formula = y ~ x) + geom_point()
+
+
+
+linear.model <-lm(ODPerCap ~ RxPP, DeathPerCap)
+log.model <-lm(log(ODPerCap) ~ RxPP, DeathPerCap)
+exp.model <-lm(ODPerCap ~ exp(RxPP), DeathPerCap)
+
+log.model.df <- data.frame(x = DeathPerCap$RxPP,
+                           y = exp(fitted(log.model)))
+log.model.df
+ggplot(DeathPerCap, aes(x=RxPP, y=ODPerCap)) + 
+  geom_point() +
+  geom_smooth(method="lm", aes(color="Exp Model"), formula= (ODPerCap ~ exp(RxPP)), se=FALSE, linetype = 1) +
+  geom_line(data = log.model.df, aes(x, y, color = "Log Model"), size = 1, linetype = 2) + 
+  guides(color = guide_legend("Model Type"))
+
+
+
 
 XX: What is XX?
 
@@ -396,7 +513,5 @@ frequencyTableBind["Bins"] <- seq(0, 39500, by = 500)
 frequencyTableBind
 ```
 
-```{r}
-library(acs)
-```
+
 
