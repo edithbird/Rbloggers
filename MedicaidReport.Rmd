@@ -448,10 +448,10 @@ p7
 ```{r}
 library(dplyr)
 head(allDrugs)
-x <- allDrugs %>% group_by(state = State) %>% summarise(variable = sum(is.na(Number.of.Prescriptions))/prod(dim(Number.of.Prescriptions)))
+x <- allDrugs %>% filter(State != "XX") %>% group_by(state = State) %>% summarise(variable = sum(is.na(Number.of.Prescriptions))/prod(dim(Number.of.Prescriptions)))
 x
 
-y <- allDrugs %>% group_by(State) %>% dplyr::summarise(count = n())
+y <- allDrugs  %>% filter(State != "XX") %>% group_by(State) %>% dplyr::summarise(count = n())
 y
 
 z <- cbind(x,y)
@@ -483,6 +483,9 @@ ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions )) +
   scale_x_continuous(limits = c(0, 1000),labels = c(0, 100, 200,300,400,500, 600,700,800,900,1000), breaks = c(0, 100, 200,300,400,500, 600,700,800,900,1000)) + scale_y_continuous(limits = c(0,500), labels = c(0, 100, 200, 300, 400, 500))+ facet_wrap(~State, ncol = 2) + theme(axis.text.x=element_text(angle=90,hjust=0)) 
 ```
 
+```{r}
+
+```
 
 
 ```{r}
@@ -508,34 +511,55 @@ do.call(grid.)
 
 ```{r}
 head(faithful)
-head(allDrugsNoNA)
 durationF <- faithful$eruptions
 range(durationF)
-durationD <-  allDrugsNoNA$Number.of.Prescriptions
-range(durationD)
 breaksF <- seq(1.5, 5.5, by = 0.5)
-breaksD <- seq(0, 40000, by = 500)
-breaksD
 duration.cutF <- cut(durationF, breaksF, right = F)
-duration.cutD <- cut(durationD, breaksD, right = F)
-options(scipen=999)
 duration.freqF <- table(duration.cutF)
 cbind(duration.freqF)
+```
 
+```{r}
+dim(allDrugsNoNA)
+allDrugsNoNA %>% arrange(desc(State))
+durationD <-  allDrugsNoNA$Number.of.Prescriptions
+range(durationD)
+breaksD <- seq(0, 40000, by = 500)
+breaksD
+duration.cutD <- cut(durationD, breaksD, right = F)
+options(scipen=999)
 duration.freqD <- table(duration.cutD)
 frequencyTableBind <- cbind(duration.freqD)
 frequencyTableBind <- as.data.frame(frequencyTableBind)
 dim(frequencyTableBind)
 frequencyTableBind
 frequencyTableBind["Bins"] <- seq(0, 39500, by = 500)
-frequencyTableBind
+frequencyTableBind %>% mutate(averageBin = cummean(Bins), averageMid = cummean(Bins)*duration.freqD)
 ```
+
+
 
 
 
 ###
 
 ```{r}
+Binned <- frequencyTableBind %>% mutate(midpt = Bins + 250,  percentofWhole = duration.freqD/sum(duration.freqD))
+Binned
+sum(Binned$duration.freqD)
+```
 
+```{r}
+head(allDrugsNoNA) %>% filter(State != "XX")
+allDrugsNoNA %>% filter(State != "XX") %>% summarise(sum(Number.of.Prescriptions))
+numberNA <- sum(y$count)
+```
+
+```{r}
+head(allDrugsNoNA)
+sum(allDrugsNoNA$Number.of.Prescriptions)
+numberNA
+head(Binned)
+Binned %>% mutate(AddedfromNA = numberNA*percentofWhole)
 ```
 

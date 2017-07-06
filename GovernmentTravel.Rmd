@@ -82,7 +82,7 @@ ggplot(NN, aes(x = namesVector)) + geom_bar(fill = "blue", alpha = 0.5) + theme(
 ```
 
 
-```{r, fig.height=35, fig.width=8}
+```{r, fig.height=20, fig.width=8}
 NN %>% mutate(Country = ifelse(country == "Russia", "Russia", "Not Russia")) %>% 
   ggplot(aes(x = year, fill = Country)) + 
   geom_bar(position = "fill") + 
@@ -102,7 +102,7 @@ head(NN)
 ```
 
 
-```{r, fig.height=35, fig.width=8}
+```{r, fig.height=20, fig.width=8}
 NN %>% 
   ggplot(aes(x = year, fill = country)) + 
   geom_bar(position = "fill") + 
@@ -322,7 +322,7 @@ MostRussia %>% ggplot(aes(x = year)) + geom_bar(fill = "plum4") + scale_y_contin
 Finally I saw in a 2 part documentary, that there might be a connections with those in Russia to the Netherlands for the purposes of money laundering. Shown below is the proportion of trips to the Netherlands and Russia to all other countries visited. 
 
 
-```{r, fig.height=30, fig.width=9}
+```{r, fig.height=20, fig.width=9}
 NN %>% mutate(Country = ifelse(country == "Russia", "Russia", ifelse(country == "Netherlands","Netherlands", "Other"))) %>% 
   ggplot(aes(x = year, fill = Country)) + 
   geom_bar(position = "fill") + 
