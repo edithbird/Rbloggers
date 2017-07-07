@@ -114,60 +114,150 @@ Total number of prescriptions by state, NAs eliminated
 NAEliminated <- allDrugs %>% 
   group_by(State) %>% 
   summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
+sum(NAEliminated$sumNumber)
 NAEliminated
+
+```
+
+###Percent of number of Rx per state
+
+```{r}
+NAEliminated <-  NAEliminated[1:51, ]
+for(i in 1:length(NAEliminated$State)){
+  NAEliminated$percentofWhole <- (NAEliminated$sumNumber/sum(NAEliminated$sumNumber))
+  NAEliminated$percentofWhole <- round(NAEliminated$percentofWhole, digits = 3)
+}
+NAEliminated$percentofWhole
 ```
 
 
-Percent of NA Values per State
+Percent of NA Values per State, XX excluded
 
 ```{r}
-allDrugsXX <- allDrugs %>% group_by(State) %>% summarise(meanNA = mean(is.na(Number.of.Prescriptions)))
+numberNAValueState <- allDrugs %>% filter(State!= "XX") %>% group_by(State) %>% summarise(SumNA = sum(is.na(Number.of.Prescriptions)))
+head(numberNAValueState)
+sum(numberNAValueState$SumNA)
+```
+
+###Percent of state entries that are NA and state's NA percentage relative to the USA
+
+```{r}
+
+sum(is.na(allDrugs))
+allDrugsXX <- allDrugs %>% filter(State != "XX") %>% group_by(State) %>% summarise(percentOfStateEntriesThatAreNA = mean(is.na(Number.of.Prescriptions)), numberNA = sum(is.na(Number.of.Prescriptions)), PercentofAllNA = numberNA/sum(numberNAValueState$SumNA))
+
+
+allDrugsXX <- allDrugsXX %>% mutate_each(funs(round(.,3)), -State) 
 allDrugsXX
+
 ```
 
-```{r}
-numberNAValueState <- allDrugs %>% group_by(State) %>% summarise(SumNA = sum(is.na(Number.of.Prescriptions)))
-numberNAValueState
-```
 
-State Portion
+State reimbursement for Drugs relative to the country, pie in ggplot
 
 ```{r}
 statePortion <- NAEliminated %>% mutate(portion = sumAmount/sum(sumAmount))
 statePortion
-ggplot(statePortion, aes(State, portion)) + geom_bar()
-bp <- ggplot(statePortion, aes(x="", y=portion, fill=State)) + geom_bar(width = 1, stat = "identity")
+
+bp <- ggplot(statePortion, aes(x="", y=portion, fill=State, color = "red")) + geom_bar(width = 1, stat = "identity")
 bp + coord_polar("y", start=0)
 ```
 
+State reimbursement for Drugs relative to the country, pie in plotrix
 
-```{r}
-
+```{r, fig.height=10, fig.width=10}
+library(plotrix)
+pie3D(statePortion$portion, labels = statePortion$State, main = "State Portion of Spending", explode=0.1, radius=.9, labelcex = 0.8,  start=0.7)
 ```
+
+
+```{r, fig.height=10, fig.width=10}
+library(treemap)
+head(allDrugsXX)
+treemap(allDrugsXX,index = c("PercentofAllNA","State"), vSize = "PercentofAllNA", vColor = "PercentofAllNA", 
+         align.labels = list(c("left", "top"), c("right", "bottom")), title = "Each State Percent of NA \nRelative to Country")
+
+treemap(allDrugsXX,index = c("percentOfStateEntriesThatAreNA", "State"), vSize = "percentOfStateEntriesThatAreNA", vColor = "percentOfStateEntriesThatAreNA", 
+         align.labels = list(c("left", "top"), c("right", "bottom")), title = "Percent of States' Entries that are NA")
+```
+
+
 
 All Drugs with State XX removed, NAs eliminated
 
 ```{r}
-States <- allDrugs %>% filter(State != "XX") %>% 
+#Number of Rx and amount reimbursed per state
+States <- allDrugs %>% 
   group_by(State) %>% 
   summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
 States
-head(allDrugs)
+```
+
+
+###Join drug reimbursement with 2016 population
+
+```{r}
 allDrugs <- inner_join(allDrugs, Population)
 allDrugs
+```
+
+###Join State Rx filled with Population
+
+```{r}
 allDrugsnoXX <- inner_join(States, Population)
 allDrugsnoXX
+```
 
-averageRxPP <- allDrugsnoXX %>% summarise(sum(sumNumber)/sum(StatePopul))
+
+###Overall Average of Rx filled per capita in USA
+```{r}
+averageRxPP <- allDrugsnoXX %>% summarise(AverageRxPPinUSA = sum(sumNumber)/sum(StatePopul))
+averageRxPP
+```
+
+```{r, fig.height=4, fig.width=12}
+
+averageRxPP
+
+StateAveRxPP <- allDrugsnoXX %>% mutate(RxPP = sumNumber/StatePopul) %>% mutate_each(funs(round(.,4)), -c(State, StateName))
+
+StateAveRxPP <- StateAveRxPP %>% mutate(Status = ifelse(RxPP <= averageRxPP$AverageRxPPinUSA, "Below Average", "Above Average"))
+
+StateAveRxPP
+PlotA <- ggplot(StateAveRxPP, aes(x = State, y = RxPP * 100000, fill = Status)) + geom_bar(stat = "identity") + 
+    geom_hline(yintercept = 0.03795325 * 100000	) + 
+scale_fill_manual(values = c("purple", "blue")) + ggtitle("State average Rx per 100,000 as compared to US average") + 
+     theme(plot.title = element_text(lineheight=.8, face="bold")) +
+  scale_y_continuous("Opiod Rx per 100,000") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+
+```{r}
+RxPerCap <- treemap(StateAveRxPP,index = c("RxPP", "State"), vSize = "RxPP", vColor = "RxPP", 
+         align.labels = list(c("left", "top"), c("right", "bottom")), title = "Number of Rx Per Capita")
+```
+
+###Missing Data
+
+```{r}
+treemap(allDrugsXX,index = c("percentOfStateEntriesThatAreNA", "State"), vSize = "percentOfStateEntriesThatAreNA", vColor = "percentOfStateEntriesThatAreNA", 
+         align.labels = list(c("left", "top"), c("right", "bottom")), title = "Percent of missing entries")
 
 ```
 
-Number of prescriptions per capita
+Number of prescriptions per capita, slightly different code
 
 ```{r}
 PerPerson <- allDrugsnoXX %>% mutate(RxPP = sumNumber/StatePopul, RxSpendingPP = sumAmount/StatePopul) %>% arrange(desc(RxPP))
+PerPerson
+PerPerson <- PerPerson %>% mutate_each(funs(round(.,3)), -c(State, StateName))
+PrescriptionsPerPerson <- treemap(PerPerson,index = c("RxPP", "State"), vSize = "RxPP", vColor = "RxPP", 
+         align.labels = list(c("left", "top"), c("right", "bottom")), title = "Rx Per Person")
+
 ```
 
+
+[Opiod Deaths in 2015](https://www.cdc.gov/drugoverdose/data/statedeaths.html)
 
 ```{r}
 OpiodDeath <- read.csv("OpiodDeath.csv", header = T)
@@ -176,33 +266,44 @@ OpiodDeath$Number <- as.numeric(gsub(",", "", OpiodDeath$Number))
 OpiodDeath 
 ```
 
+
 Opiod Death per capita
 
 ```{r}
 DeathPerCap <- inner_join(PerPerson, OpiodDeath)
 DeathPerCap <-  DeathPerCap %>% mutate(ODPP = Number/StatePopul)
+DeathPerCap <- DeathPerCap%>% mutate_each(funs(round(.,3)), -c(State,StateName, ODPP )) %>% mutate_each(funs(round(.,6)), c(ODPP))
+
+DeathPerCap
+Death <- treemap(DeathPerCap,index = c("ODPP", "State"), vSize = "ODPP", vColor = "ODPP", 
+         align.labels = list(c("left", "top"), c("right", "bottom")), title = "Number Deaths Per Capita")
+
+OverallDeathperCapUSA <- sum(DeathPerCap$Number)/sum(DeathPerCap$StatePopul)
+OverallDeathperCapUSA
+
+DeathPerCap <- DeathPerCap %>% mutate(DeathPosition = ifelse(ODPP > OverallDeathperCapUSA, "Above Average", "Below Average"))
 DeathPerCap
 
+PlotB <- ggplot(DeathPerCap, aes(x = State, y = ODPP * 100000, fill = DeathPosition)) + geom_bar(stat = "identity") + 
+    geom_hline(yintercept = 0.0001604907 * 100000) + 
+scale_fill_manual(values = c("purple", "blue")) + ggtitle("State average opiod related per 100,000 as compared to US average") + 
+     theme(plot.title = element_text(lineheight=.8, face="bold")) +
+  scale_y_continuous("Overdose deaths per 100,000") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
 ```
 
-
-```{r}
-ODperCap <- ggplot(DeathPerCap, aes(x = State, y = ODPerCap, color = State, fill = State)) + geom_bar(stat = "identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-```
-
-```{r}
-RxPerP <- ggplot(DeathPerCap, aes(x = State, y = RxPP, color = State, fill = State)) + geom_bar(stat = "identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
-grid.arrange(ODperCap, RxPerP, ncol=2)
-
+```{r, fig.height=3, fig.width=10}
+grid.arrange(PlotA, PlotB, ncol = 1)
 ```
 
 where you subtract the mean and divide by the standard deviation of your variable
 
 ```{r}
+DeathPerCap
 
-meanOD <- mean(DeathPerCap$ODPerCap)
+meanOD <- mean(DeathPerCap$ODPP)
 meanOD
-sdOD <- sd(DeathPerCap$ODPerCap)
+sdOD <- sd(DeathPerCap$ODPP)
 sdOD
 
 ```
@@ -223,7 +324,7 @@ names(DeathandRxperCapperState)
 DeathandRxperCapperState <- DeathandRxperCapperState %>% mutate(zRx = ((RxPP - mean(RxPP))/ sd(RxPP)), zOD = ((ODPP - mean(ODPP))/sd(ODPP)))
 DeathandRxperCapperState
 ```
-```{r}
+```{r, fig.height=4, fig.width=10}
 names(DeathandRxperCapperState)
 
 
@@ -239,7 +340,7 @@ dat.m
 newset
 
 ggplot(dat.m, aes(State, value, fill=variable)) + 
-  geom_bar(position="dodge",stat="identity")
+  geom_bar(position="dodge",stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
 
@@ -270,6 +371,7 @@ plot1 +
     geom_smooth(method=lm)   # Add linear regression line 
                              #  (by default includes 95% confidence region)
 ```
+
 ```{r}
 plot1 + geom_point(shape=1) +    # Use hollow circles
     geom_smooth(method=lm,   # Add linear regression line
@@ -285,30 +387,6 @@ plot1 + geom_smooth(method = "lm", se=FALSE, color="black", formula = y ~ x) + g
 ```
 
 
-
-
-
-
-XX: What is XX?
-
-```{r}
-XX <- allDrugs %>% filter(State == "XX") %>% group_by(State) %>% 
-  summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE)) 
-XX
-```
-
-
-
-
-Is XX the total of all the states prescriptions?
-
-```{r}
-sum(States$sumNumber)/XX$sumNumber
-sum(States$sumAmount)/XX$sumAmount
-XX$sumNumber/sum(States$sumNumber)
-XX$sumAmount/sum(States$sumAmount)
-```
-
 Quarterly number of prescriptions
 
 ```{r}
@@ -323,6 +401,7 @@ We don't know the number of prescriptions for each NA value
 Subs1<-subset(allDrugs, (is.na(allDrugs[,11]))) 
 #Total number of NA
 dim(Subs1)
+head(Subs1)
 ```
 
 ###Quartrely NA for states
@@ -447,17 +526,9 @@ p7
 
 ```{r}
 library(dplyr)
-head(allDrugs)
-x <- allDrugs %>% filter(State != "XX") %>% group_by(state = State) %>% summarise(variable = sum(is.na(Number.of.Prescriptions))/prod(dim(Number.of.Prescriptions)))
-x
+sum(is.na(allDrugs$Number.of.Prescriptions))
 
-y <- allDrugs  %>% filter(State != "XX") %>% group_by(State) %>% dplyr::summarise(count = n())
-y
 
-z <- cbind(x,y)
-
-z <- z %>% mutate(PercentNA = variable/count) %>% select(State, PercentNA)
-z
 
 ```
 
@@ -469,43 +540,18 @@ ggplot(allDrugsNoNA,aes(x=Number.of.Prescriptions)) +
 ```
 
 
-```{r}
-ggplot(z, aes(x = State, y = PercentNA)) + geom_bar(stat = "identity")
-```
-
 
 ```{r, fig.height=50, fig.width=10}
-
-
+dim(allDrugsNoNA)
+head(allDrugsNoNA)
 ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions )) + 
   geom_histogram(aes(fill = ..count..), breaks = seq(0,1000, by = 100),binwidth=100, colour="blue", fill = "blue", alpha = 0.2, lwd=0.2) +
   stat_bin(aes(label = ..count..),geom="text", colour="black", vjust=-1, size=4.5, breaks = c(0, 100, 200,300,400,500, 600,700,800,900,1000)) +
   scale_x_continuous(limits = c(0, 1000),labels = c(0, 100, 200,300,400,500, 600,700,800,900,1000), breaks = c(0, 100, 200,300,400,500, 600,700,800,900,1000)) + scale_y_continuous(limits = c(0,500), labels = c(0, 100, 200, 300, 400, 500))+ facet_wrap(~State, ncol = 2) + theme(axis.text.x=element_text(angle=90,hjust=0)) 
 ```
 
-```{r}
-
-```
 
 
-```{r}
-dat <-structure(list(sex = structure(c(1L, 1L, 1L, 1L, 1L, 1L, 1L, 
-1L, 1L, 1L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), .Label = c("male", 
-"female"), class = "factor"), A = c(1, 2, 0, 2, 1, 2, 2, 0, 2, 
-0, 1, 2, 2, 0, 0, 2, 0, 0, 0, 2), B = c(0, 0, 0, 0, 0, 2, 0, 
-0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0), C = c(1, 2, 1, 0, 0, 
-2, 1, 1, 0, 1, 1, 0, 1, 2, 1, 2, 0, 2, 1, 2), D = c(2, 2, 0, 
-2, 2, 2, 1, 0, 1, 1, 1, 0, 1, 2, 0, 0, 1, 1, 1, 0), E = c(0, 
-0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 2, 2), F = c(2, 
-2, 1, 2, 1, 2, 2, 0, 1, 2, 0, 1, 2, 2, 0, 1, 2, 2, 2, 2)), .Names = c("sex", 
-"A", "B", "C", "D", "E", "F"), variable.labels = structure(c("sex", 
-"zenuwac", "panieke", "gespann", "rustelo", "angstig", "onzeker"
-), .Names = c("sex", "anx01", "anx02", "anx03", "anx04", "anx05", 
-"anx06")), codepage = 20127L, row.names = c(NA, 20L), class = "data.frame")
-str(dat)
-dat
-do.call(grid.)
-```
 
 [How to do a frequency table in base R](http://www.r-tutor.com/elementary-statistics/quantitative-data/frequency-distribution-quantitative-data)
 
@@ -519,12 +565,30 @@ duration.freqF <- table(duration.cutF)
 cbind(duration.freqF)
 ```
 
+
+
+
+```{r}
+
+
+allDrugsNoNA <- allDrugsNoNA %>% arrange(desc(State))
+allDrugs <- allDrugs %>% arrange(desc(State))
+head(allDrugsNoNA)
+head(allDrugs)
+dim(allDrugs)
+dim(allDrugsNoNA)
+
+```
+
+
+
+
 ```{r}
 dim(allDrugsNoNA)
 allDrugsNoNA %>% arrange(desc(State))
 durationD <-  allDrugsNoNA$Number.of.Prescriptions
 range(durationD)
-breaksD <- seq(0, 40000, by = 500)
+breaksD <- seq(0, 45000, by = 500)
 breaksD
 duration.cutD <- cut(durationD, breaksD, right = F)
 options(scipen=999)
@@ -533,7 +597,10 @@ frequencyTableBind <- cbind(duration.freqD)
 frequencyTableBind <- as.data.frame(frequencyTableBind)
 dim(frequencyTableBind)
 frequencyTableBind
-frequencyTableBind["Bins"] <- seq(0, 39500, by = 500)
+frequencyTableBind["Bins"] <- seq(0, 44500, by = 500)
+
+
+
 frequencyTableBind %>% mutate(averageBin = cummean(Bins), averageMid = cummean(Bins)*duration.freqD)
 ```
 
@@ -552,14 +619,48 @@ sum(Binned$duration.freqD)
 ```{r}
 head(allDrugsNoNA) %>% filter(State != "XX")
 allDrugsNoNA %>% filter(State != "XX") %>% summarise(sum(Number.of.Prescriptions))
-numberNA <- sum(y$count)
+
 ```
 
 ```{r}
+
+
 head(allDrugsNoNA)
 sum(allDrugsNoNA$Number.of.Prescriptions)
-numberNA
+
 head(Binned)
-Binned %>% mutate(AddedfromNA = numberNA*percentofWhole)
+
 ```
+
+
+```{r}
+allDrugsXX
+head(allDrugsNoNA)
+
+tryThis <- inner_join(allDrugsXX, allDrugsNoNA)
+tail(tryThis)
+dim(tryThis)
+frequencyTableBind
+
+
+```
+
+
+
+
+```{r}
+head(mtcars)
+head(subset(mtcars, select = "gear"))
+
+head(subset(tryThis, select = Number.of.Prescriptions))
+w <- table(tryThis$Number.of.Prescriptions)
+t <- as.data.frame(w)
+
+library(plyr)
+count(tryThis, 'State')
+count(tryThis, 'Number.of.Prescriptions')
+tryThis %>% group_by(State,Number.of.Prescriptions) %>% select(State, Number.of.Prescriptions) %>% tally()
+```
+
+
 
