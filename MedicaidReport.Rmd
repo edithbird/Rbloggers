@@ -58,6 +58,7 @@ str(Medicaid)
 
 kable(head(Medicaid))
 
+
 ```
 ###Filter some of the narcotics from the medicaid dataframe
 
@@ -109,6 +110,66 @@ head(allDrugs)
 allDrugs <- allDrugs %>% arrange(desc(Number.of.Prescriptions))
 head(allDrugs, 35)
 ```
+
+```{r}
+dim(allDrugs %>% filter(State != "XX"))
+dim(allDrugs %>% filter(State !="XX") %>% na.omit())
+#NA = 0.52
+1-(28317/58439)
+
+UniqueData <- allDrugs %>% filter(State != "XX")
+unique(UniqueData$State)
+
+
+for(i in unique(UniqueData$State)){
+  
+  newDS <- UniqueData %>% filter(State == i)
+  
+  print(head(newDS))
+}
+```
+
+
+```{r}
+breaksD <- seq(0, 45000, by = 500)
+
+
+for(i in unique(UniqueData$State)){
+  newDS <- UniqueData %>% filter(State == i)
+  durationD <-  newDS$Number.of.Prescriptions
+  duration.cutD <- cut(durationD, breaksD, right = F)
+  options(scipen=999)
+  duration.freqD <- table(duration.cutD)
+  frequencyTableBind <- cbind(duration.freqD)
+  frequencyTableBind <- as.data.frame(frequencyTableBind)
+  frequencyTableBind[i] <- seq(0, 44500, by = 500)
+  print(frequencyTableBind)
+}
+```
+
+
+```{r}
+breaksD <- seq(0, 45000, by = 500)
+bins <- seq(1,91, by = 1)
+bins
+x <- cbind.data.frame(breaksD, bins)
+x
+```
+
+
+```{r}
+aSubset <- allDrugs %>% select(State,Number.of.Prescriptions)
+head(aSubset)
+aSubset <- aSubset %>% filter(State != "XX") %>% na.omit()
+head(aSubset)
+
+unique(aSubset$State)
+
+
+```
+
+
+
 Total number of prescriptions by state, NAs eliminated
 
 ```{r}
@@ -190,27 +251,36 @@ All Drugs with State XX removed, NAs eliminated
 #Number of Rx and amount reimbursed per state
 States <- allDrugs %>% 
   group_by(State) %>% 
-  summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE))
+  summarise(sumNumber = sum(Number.of.Prescriptions,na.rm=TRUE), sumAmount = sum(Medicaid.Amount.Reimbursed,na.rm=TRUE), numberEntries = n())
 States
+```
+NA counts. percentages, and sums of Rx: Join
+
+```{r}
+
+Join <- inner_join(States, allDrugsXX) 
+
 ```
 
 
-###Join drug reimbursement with 2016 population
+###Join drug reimbursement with 2016 population: allDrugs
 
 ```{r}
 allDrugs <- inner_join(allDrugs, Population)
 allDrugs
+dim(allDrugs)
 ```
 
-###Join State Rx filled with Population
+###Join State Rx filled with Population: allDrugsnoXX
 
 ```{r}
 allDrugsnoXX <- inner_join(States, Population)
-allDrugsnoXX
+dim(allDrugsnoXX)
 ```
 
 
 ###Overall Average of Rx filled per capita in USA
+
 ```{r}
 averageRxPP <- allDrugsnoXX %>% summarise(AverageRxPPinUSA = sum(sumNumber)/sum(StatePopul))
 averageRxPP
@@ -238,7 +308,7 @@ RxPerCap <- treemap(StateAveRxPP,index = c("RxPP", "State"), vSize = "RxPP", vCo
          align.labels = list(c("left", "top"), c("right", "bottom")), title = "Number of Rx Per Capita")
 ```
 
-###Missing Data
+###Missing Data: Pcecent NA Values per State
 
 ```{r}
 treemap(allDrugsXX,index = c("percentOfStateEntriesThatAreNA", "State"), vSize = "percentOfStateEntriesThatAreNA", vColor = "percentOfStateEntriesThatAreNA", 
@@ -297,7 +367,7 @@ scale_fill_manual(values = c("purple", "blue")) + ggtitle("State average opiod r
 grid.arrange(PlotA, PlotB, ncol = 1)
 ```
 
-where you subtract the mean and divide by the standard deviation of your variable
+Z Score: where you subtract the mean and divide by the standard deviation of your variable
 
 ```{r}
 DeathPerCap
@@ -316,7 +386,6 @@ sdRx <- sd(DeathPerCap$RxPP)
 sdRx
 ```
 
-where you subtract the mean and divide by the standard deviation of your variable
 
 ```{r}
 names(DeathPerCap)
@@ -327,11 +396,7 @@ DeathandRxperCapperState
 ```
 ```{r, fig.height=4, fig.width=10}
 names(DeathandRxperCapperState)
-
-
 library(reshape2)
-
-
 newset <- DeathandRxperCapperState %>% select(State, zRx, zOD)
 newset
 dat.m <- melt(newset)
@@ -432,6 +497,8 @@ dim(allDrugs)
 dim(NoNA)
 1-(28317/62034)
 ```
+
+
 
 
 ###Arkansas
@@ -643,70 +710,18 @@ tail(tryThis)
 dim(tryThis)
 frequencyTableBind
 
-
+allDrugsNoNA %>% group_by(State) %>% summarise(meanNRx = mean(Number.of.Prescriptions))
 ```
 
 
 
 
 ```{r}
-head(mtcars)
-head(subset(mtcars, select = "gear"))
-
-head(subset(tryThis, select = Number.of.Prescriptions))
-w <- table(tryThis$Number.of.Prescriptions)
-t <- as.data.frame(w)
 
 library(plyr)
 count(tryThis, 'State')
 count(tryThis, 'Number.of.Prescriptions')
 tryThis %>% group_by(State,Number.of.Prescriptions) %>% select(State, Number.of.Prescriptions) %>% tally()
-```
-
-AK frequency distribution
-
-```{r}
-head(AK)
-
-
-dim(allDrugsNoNA)
-allDrugsNoNA %>% arrange(desc(State))
-durationD <-  AK$Number.of.Prescriptions
-range(durationD)
-breaksD <- seq(0, 45000, by = 500)
-breaksD
-duration.cutD <- cut(durationD, breaksD, right = F)
-options(scipen=999)
-duration.freqD <- table(duration.cutD)
-frequencyTableBind <- cbind(duration.freqD)
-frequencyTableBind <- as.data.frame(frequencyTableBind)
-dim(frequencyTableBind)
-frequencyTableBind
-frequencyTableBind["Bins"] <- seq(0, 44500, by = 500)
-frequencyTableBind
-
-frequencyTableBind %>% mutate(averageBin = cummean(Bins), midpoint = averageBin+250, Numbermissing = duration.freqD*midpoint*0.581) %>% select(duration.freqD, Bins, midpoint, Numbermissing)
-```
-ME freq dist
-
-```{r}
-durationD <-  ME$Number.of.Prescriptions
-range(durationD)
-breaksD <- seq(0, 45000, by = 500)
-breaksD
-duration.cutD <- cut(durationD, breaksD, right = F)
-options(scipen=999)
-duration.freqD <- table(duration.cutD)
-frequencyTableBind <- cbind(duration.freqD)
-frequencyTableBind <- as.data.frame(frequencyTableBind)
-dim(frequencyTableBind)
-frequencyTableBind
-frequencyTableBind["Bins"] <- seq(0, 44500, by = 500)
-
-
-allDrugsXX
-
-frequencyTableBind %>% mutate(averageBin = cummean(Bins), midpoint = averageBin+250, Numbermissing = duration.freqD*midpoint*0.426) %>% select(duration.freqD, Bins, midpoint, Numbermissing)
 ```
 
 CA freq dist
@@ -726,6 +741,23 @@ frequencyTableBind
 frequencyTableBind["Bins"] <- seq(0, 44500, by = 500)
 
 frequencyTableBind %>% mutate(averageBin = cummean(Bins), midpoint = averageBin+250, Numbermissing = duration.freqD*midpoint*0.439) %>% select(duration.freqD, Bins, midpoint, Numbermissing)
+#total = 1629
+sum(frequencyTableBind$duration.freqD)
 
+
+frequencyTable <- frequencyTableBind %>% mutate(midpt = cummean(Bins) + 250, relFreq = duration.freqD/1629, missing = .43*duration.freqD, sumRxMissing = missing*midpt)
+frequencyTable
+xYZCA <- CA %>% filter(Number.of.Prescriptions > 500 & Number.of.Prescriptions <= 1000)
+xYZCA
+mean(xYZCA$Number.of.Prescriptions)
+```
+
+```{r}
+my_function <- function(x){
+  if(x>0 & x<=500){
+    
+  }
+  
+}
 ```
 
