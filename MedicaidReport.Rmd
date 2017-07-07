@@ -14,6 +14,7 @@ library(dplyr)
 library(rvest)
 library(ggplot2)
 library(gridExtra)
+library(descr)
 ```
 
 
@@ -340,7 +341,7 @@ dat.m
 newset
 
 ggplot(dat.m, aes(State, value, fill=variable)) + 
-  geom_bar(position="dodge",stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  geom_bar(position="dodge",stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + scale_fill_manual(values = c("red", "blue")) 
 
 
 
@@ -662,5 +663,69 @@ count(tryThis, 'Number.of.Prescriptions')
 tryThis %>% group_by(State,Number.of.Prescriptions) %>% select(State, Number.of.Prescriptions) %>% tally()
 ```
 
+AK frequency distribution
 
+```{r}
+head(AK)
+
+
+dim(allDrugsNoNA)
+allDrugsNoNA %>% arrange(desc(State))
+durationD <-  AK$Number.of.Prescriptions
+range(durationD)
+breaksD <- seq(0, 45000, by = 500)
+breaksD
+duration.cutD <- cut(durationD, breaksD, right = F)
+options(scipen=999)
+duration.freqD <- table(duration.cutD)
+frequencyTableBind <- cbind(duration.freqD)
+frequencyTableBind <- as.data.frame(frequencyTableBind)
+dim(frequencyTableBind)
+frequencyTableBind
+frequencyTableBind["Bins"] <- seq(0, 44500, by = 500)
+frequencyTableBind
+
+frequencyTableBind %>% mutate(averageBin = cummean(Bins), midpoint = averageBin+250, Numbermissing = duration.freqD*midpoint*0.581) %>% select(duration.freqD, Bins, midpoint, Numbermissing)
+```
+ME freq dist
+
+```{r}
+durationD <-  ME$Number.of.Prescriptions
+range(durationD)
+breaksD <- seq(0, 45000, by = 500)
+breaksD
+duration.cutD <- cut(durationD, breaksD, right = F)
+options(scipen=999)
+duration.freqD <- table(duration.cutD)
+frequencyTableBind <- cbind(duration.freqD)
+frequencyTableBind <- as.data.frame(frequencyTableBind)
+dim(frequencyTableBind)
+frequencyTableBind
+frequencyTableBind["Bins"] <- seq(0, 44500, by = 500)
+
+
+allDrugsXX
+
+frequencyTableBind %>% mutate(averageBin = cummean(Bins), midpoint = averageBin+250, Numbermissing = duration.freqD*midpoint*0.426) %>% select(duration.freqD, Bins, midpoint, Numbermissing)
+```
+
+CA freq dist
+
+```{r}
+durationD <-  CA$Number.of.Prescriptions
+range(durationD)
+breaksD <- seq(0, 45000, by = 500)
+breaksD
+duration.cutD <- cut(durationD, breaksD, right = F)
+options(scipen=999)
+duration.freqD <- table(duration.cutD)
+frequencyTableBind <- cbind(duration.freqD)
+frequencyTableBind <- as.data.frame(frequencyTableBind)
+dim(frequencyTableBind)
+frequencyTableBind
+frequencyTableBind["Bins"] <- seq(0, 44500, by = 500)
+
+frequencyTableBind %>% mutate(averageBin = cummean(Bins), midpoint = averageBin+250, Numbermissing = duration.freqD*midpoint*0.439) %>% select(duration.freqD, Bins, midpoint, Numbermissing)
+
+```
 
