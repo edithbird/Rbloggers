@@ -112,6 +112,19 @@ head(allDrugs, 35)
 ```
 
 ```{r}
+a <- allDrugs %>% group_by(State) %>% summarise(entriesNA = sum(is.na(Number.of.Prescriptions)))
+a <- a %>% filter(State != "XX")
+a
+b <- allDrugs %>% filter(State != "XX") %>% group_by(State) %>% summarise(entriesCount = n())
+b
+NAInfo <- inner_join(a,b)
+c <- NAInfo %>% mutate(percentNA = round(entriesNA/entriesCount, digits = 2))
+c
+```
+
+###Using a loop to make a seperate dataset for each state
+
+```{r}
 dim(allDrugs %>% filter(State != "XX"))
 dim(allDrugs %>% filter(State !="XX") %>% na.omit())
 #NA = 0.52
@@ -130,6 +143,17 @@ for(i in unique(UniqueData$State)){
 ```
 
 
+
+```{r}
+head(UniqueData)
+head(c)
+UniqueData <- inner_join(UniqueData, c)
+head(UniqueData)
+```
+
+
+###There is so much missing data for each state, I would like to find a way to as accurately as possible calculate the number of prescriptions filled. Using a loop to make tables to show frequency of number of prescriptions for each state.
+
 ```{r}
 breaksD <- seq(0, 45000, by = 500)
 
@@ -143,6 +167,7 @@ for(i in unique(UniqueData$State)){
   frequencyTableBind <- cbind(duration.freqD)
   frequencyTableBind <- as.data.frame(frequencyTableBind)
   frequencyTableBind[i] <- seq(0, 44500, by = 500)
+  frequencyTableBind <- frequencyTableBind %>% mutate(relFreq = (duration.freqD/sum(duration.freqD)))
   print(frequencyTableBind)
 }
 ```
@@ -208,7 +233,7 @@ sum(numberNAValueState$SumNA)
 sum(is.na(allDrugs))
 allDrugsXX <- allDrugs %>% filter(State != "XX") %>% group_by(State) %>% summarise(percentOfStateEntriesThatAreNA = mean(is.na(Number.of.Prescriptions)), numberNA = sum(is.na(Number.of.Prescriptions)), PercentofAllNA = numberNA/sum(numberNAValueState$SumNA))
 
-
+head(allDrugsXX)
 allDrugsXX <- allDrugsXX %>% mutate_each(funs(round(.,3)), -State) 
 allDrugsXX
 
