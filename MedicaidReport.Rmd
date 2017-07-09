@@ -136,9 +136,16 @@ unique(UniqueData$State)
 
 for(i in unique(UniqueData$State)){
   
+  
   newDS <- UniqueData %>% filter(State == i)
   
   print(head(newDS))
+  hist(newDS$Number.of.Prescriptions, main = paste(i, "'s Rx Frequency"))
+  identify(newDS$Number.of.Prescriptions)
+  
+  
+  
+  
 }
 ```
 
@@ -168,7 +175,9 @@ for(i in unique(UniqueData$State)){
   frequencyTableBind <- as.data.frame(frequencyTableBind)
   frequencyTableBind[i] <- seq(0, 44500, by = 500)
   frequencyTableBind <- frequencyTableBind %>% mutate(relFreq = (duration.freqD/sum(duration.freqD)))
+  frequencyTableBind$relFreq <- round(frequencyTableBind$relFreq, digits = 3)
   print(frequencyTableBind)
+  
 }
 ```
 
@@ -400,6 +409,7 @@ DeathPerCap
 meanOD <- mean(DeathPerCap$ODPP)
 meanOD
 sdOD <- sd(DeathPerCap$ODPP)
+
 sdOD
 
 ```
@@ -604,8 +614,10 @@ ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions, fill = factor(State))) + g
 [labels on ggplot](https://stackoverflow.com/questions/30057765/histogram-ggplot-show-count-label-for-each-bin-for-each-category)
 
 ```{r, fig.height=45, fig.width=10}
+
+breaksD
 #head(allDrugsNoNA)
-ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions, group= factor(State), fill = "white")) + geom_histogram() + stat_bin(binwidth = 100, geom="text", aes(label=..count..), angle = 90) + facet_wrap(~ State, ncol = 2) + theme_bw() + scale_x_continuous(limits = c(-100, 1100), breaks = c(-100, 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100)) +
+ggplot(allDrugsNoNA, aes(x = Number.of.Prescriptions, group= factor(State), fill = "white")) + geom_histogram() + stat_bin(binwidth = 500, geom="text", aes(label=..count..), angle = 90) + facet_wrap(~ State, ncol = 2) + theme_bw() + scale_x_continuous(limits = c(-100, 1100), breaks = breaksD) +
   theme(axis.text.x=element_text(angle=90,hjust=1)) 
 ```
 
@@ -777,12 +789,54 @@ xYZCA
 mean(xYZCA$Number.of.Prescriptions)
 ```
 
+
+
 ```{r}
-my_function <- function(x){
-  if(x>0 & x<=500){
-    
-  }
-  
+iris_split <- split(iris, iris$Species)
+new_names <- c("one", "two", "three")
+for (i in 1:length(iris_split)) {
+  assign(new_names[i], iris_split[[i]])
 }
+one
 ```
+
+
+```{r}
+head(allDrugsNoNA)
+unique(allDrugsNoNA$State)
+states_split <- split(allDrugsNoNA, allDrugsNoNA$State)
+new_names <- sort(state.abb)
+
+
+for (i in 1:length(states_split)){
+  
+  assign(new_names[i], states_split[[i]] %>% select(State, Number.of.Prescriptions))
+  
+
+}
+WY
+
+#Population["State"] <- state.abb[match(Population$StateName,state.name)]
+```
+
+```{r}
+br = seq(0,45000,by=5000)
+ranges = paste(head(br,-1), br[-1], sep=" - ")
+my_bin <- function(x){
+  
+
+
+freq   = hist(x, breaks=br, include.lowest=TRUE, plot=TRUE)
+#data.frame(freq)
+summary(x)
+
+#as.data.frame(range = ranges, frequency = freq$counts)
+}
+
+
+
+
+my_bin(CA)
+```
+
 
