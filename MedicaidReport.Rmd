@@ -22,6 +22,23 @@ library(descr)
 
 ```{r}
 medicaid <- read.csv("medicaid.csv", header = T, stringsAsFactors = F)
+
+#treatment drug
+SUBOXONE <- medicaid %>% filter(Product.Name == "SUBOXONE")
+METHADONE <- medicaid %>% filter(Product.Name == "METHADONE")
+NALTREXONE <- medicaid %>% filter(Product.Name =="NALTREXONE")
+BUPRENORPHINE <-  medicaid %>% filter(Product.Name == "BUPRENORPHINE")
+VIVITROL <- medicaid %>% filter(Product.Code == "VIVITROL")
+ZUBSOLV <- medicaid %>% filter(Product.Code == "ZUBSOLV")
+BUNAVAIL <- medicaid %>% filter(Product.Code == "BUNAVAIL")
+TREATMENT <- rbind.data.frame(SUBOXONE, METHADONE, NALTREXONE, BUPRENORPHINE, VIVITROL, ZUBSOLV)
+dim(TREATMENT)
+NALTREXONE
+toupper("Targiniq")
+CODEINE <- medicaid %>% filter(Product.Name == "TYLENOL W/")
+CODEINE
+    CODEINE1 <- medicaid %>% filter(Product.Name == "OXYCONTIN")
+CODEINE1
 ```
 
 ###Retrieve narcotics list
@@ -30,6 +47,18 @@ medicaid <- read.csv("medicaid.csv", header = T, stringsAsFactors = F)
 Narcotics <- read_html("https://www.drugs.com/drug-class/narcotic-analgesics.html")
 Drug_Names <- Narcotics %>% html_nodes("br+ .small a") %>% html_text()
 
+
+MORENARCS <- read_html("http://drugabuse.com/library/drugs-a-z/")
+
+NARCNAMES <- MORENARCS %>% html_nodes("dt") %>% html_text() %>% gsub('[\r\n\t]', '', .)
+NARCNAMES <- toupper(NARCNAMES)
+ccc <- Medicaid %>% filter(Product.Name %in% NARCNAMES)
+
+ccc <- ccc %>% filter(Product.Name != "CONCERTA" & Product.Name != "RITALIN" & Product.Name != "VIVITROL", Product.Name!= "SUBOXONE" & Product.Name!="METHADONE" & Product.Name!= "NALTREXONE" & Product.Name != "BUPRENORPHINE" & Product.Name != "ZUBSOLV" & Product.Name != "BUNAVIL" & Product.Name != "ADDERALL")
+
+unique(ccc$Product.Name)
+dim(ccc)
+unique(TREATMENT$Product.Name)
 ```
 
 Population Data
@@ -54,17 +83,14 @@ Population
 
 ```{r}
 Medicaid <- as.data.frame(medicaid)
-str(Medicaid)
-
-kable(head(Medicaid))
-
-
 ```
+
 ###Filter some of the narcotics from the medicaid dataframe
 
 ```{r}
 
 Drug_Names <- unique(toupper(Drug_Names))
+Drug_Names
 Drugs <- c("MORPHINE",
 "OXYMORPHONE", 
 "HYDROMORPHONE", 
@@ -76,7 +102,7 @@ Drugs <- c("MORPHINE",
 "LEVORPHANOL",
 "TAPENTADOL",
 "PENTAZOCINE",  
-"REMIFENTANIL")
+"REMIFENTANIL", "OXYCONTIN")
 
 medicaid1 <- Medicaid %>% filter(Product.Name %in% Drug_Names)
 dim(medicaid1)
@@ -93,13 +119,22 @@ LEVORPHANOL  <- Medicaid %>% filter(grepl("LEVORPHANOL", Product.Name))
 TAPENTADOL <- Medicaid %>% filter(grepl("TAPENTADOL", Product.Name))
 PENTAZOCINE <- Medicaid %>% filter(grepl("PENTAZOCINE", Product.Name))
 REMIFENTANIL <- Medicaid %>% filter(grepl("REMIFENTANIL", Product.Name))
+FIORICET <- Medicaid %>% filter(grepl("FIORICET", Product.Name))
+TUSSINS <- Medicaid %>% filter(grepl("TUSS", Product.Name))
+TUSSINS
+toupper("Tylenol")
+
+BUTALBITAL <- Medicaid %>% filter(grepl("BUTALBITAL", Product.Name))
+BUTALBITAL
+
 ```
 
 ###Bind narcotics into a dataframe
 
 ```{r}
-allDrugs <- rbind.data.frame(medicaid1, MORPHINE, OXYMORPHONE, HYDROMORPHONE, BUPRENORPHINE, TRAMADOL, HYDROCODONE, BUTORPHANOL, PROPOXYPHENE, LEVORPHANOL, TAPENTADOL, PENTAZOCINE, REMIFENTANIL )
-dim(allDrugs)
+allDrugs <- rbind.data.frame(medicaid1, MORPHINE, OXYMORPHONE, HYDROMORPHONE, BUPRENORPHINE, TRAMADOL, HYDROCODONE, BUTORPHANOL, PROPOXYPHENE, LEVORPHANOL, TAPENTADOL, PENTAZOCINE, REMIFENTANIL, FIORICET, TUSSINS, BUTALBITAL, CODEINE, ccc )
+unique(allDrugs$Product.Name)
+allDrugs %>% group_by(Product.Name) %>% summarise(count = n())
 ```
 
 All the Narcotics in All States
@@ -109,6 +144,8 @@ dim(allDrugs)
 head(allDrugs)
 allDrugs <- allDrugs %>% arrange(desc(Number.of.Prescriptions))
 head(allDrugs, 35)
+unique(allDrugs$Product.Name)
+
 ```
 
 ```{r}
@@ -180,6 +217,10 @@ for(i in unique(UniqueData$State)){
   
 }
 ```
+
+
+
+
 
 
 ```{r}
@@ -330,7 +371,7 @@ StateAveRxPP <- StateAveRxPP %>% mutate(Status = ifelse(RxPP <= averageRxPP$Aver
 
 StateAveRxPP
 PlotA <- ggplot(StateAveRxPP, aes(x = State, y = RxPP * 100000, fill = Status)) + geom_bar(stat = "identity") + 
-    geom_hline(yintercept = 0.03795325 * 100000	) + 
+    geom_hline(yintercept = 0.1246144 * 100000	) + 
 scale_fill_manual(values = c("purple", "blue")) + ggtitle("State average Rx per 100,000 as compared to US average") + 
      theme(plot.title = element_text(lineheight=.8, face="bold")) +
   scale_y_continuous("Opiod Rx per 100,000") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
@@ -522,7 +563,7 @@ kable(Subs3)
 ```
 
 
-Percent of NA entries in the allDrugs dataset. 54%
+Percent of NA entries in the allDrugs dataset. 46%
 
 ```{r}
 NoNA <- allDrugs %>% na.omit() 
@@ -530,13 +571,13 @@ head(NoNA)
 
 dim(allDrugs)
 dim(NoNA)
-1-(28317/62034)
+1-(101683/188511)
 ```
 
 
 
 
-###Arkansas
+###ALASKA
 
 ```{r}
 AK <- allDrugs %>% filter(State == "AK") 
@@ -547,7 +588,7 @@ summary(AK)
   
 head(AK)
 #Percentage of values that are NA
-480/826
+1374/2524
 hist(AK$Number.of.Prescriptions)
 ```
 
@@ -559,8 +600,6 @@ dim(ME)
 sum(is.na(ME$Number.of.Prescriptions))
 summary(ME)
 head(ME)
-#Percent NA in Maine
-293/688
 hist(ME$Number.of.Prescriptions)
 ```
 
@@ -572,8 +611,7 @@ dim(CA)
 sum(is.na(CA$Number.of.Prescriptions))
 summary(CA)
 head(CA)
-#Percent of NA
-1275/2904
+
 hist(CA$Number.of.Prescriptions)
 ```
 
@@ -838,5 +876,14 @@ summary(x)
 
 my_bin(CA)
 ```
+
+```{r}
+x <- cbind( Freq=table(WY$Number.of.Prescriptions), Cumul=cumsum(table(WY$Number.of.Prescriptions)), relative=prop.table(table(WY$Number.of.Prescriptions)))
+x <- data.frame(x)
+x
+
+
+```
+
 
 
