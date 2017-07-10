@@ -1,0 +1,86 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(forecast)
+library(timekit)
+library(geofacet)
+library(tidyquant)
+library(sweep)
+```
+
+
+
+```{r}
+states <- tibble(abbreviation = state.abb) %>% mutate(fred_code = paste0(abbreviation, "NGSP")) %>% select(2:1)
+states
+states_gdp <- states_gdp %>%
+    tq_get(get = "economic.data", from = "2007-01-01", to = "2017-06-01") 
+states_gdp <- allStates %>% nest()
+states_gdp
+states_gdp <- states_gdp %>%
+    mutate(data_ts = map(data, tk_ts, freq = 1, start = 2007, silent = TRUE))
+states_gdp
+```
+
+
+Get all states
+
+```{r}
+states_gdp <- tq_get(states, get = "economic.data", from = "2007-01-01", to = "2017-06-01") %>% rename(gdp = price)
+head(states_gdp, 20)
+states_gdp <- allStates %>%
+    select(-fred_code) %>%
+    group_by(abbreviation)
+states_gdp
+states_gdp <- states_gdp %>%
+    nest()
+states_gdp
+
+```
+
+
+
+
+
+Convert from tibble to ts using timekit
+
+
+
+```{r}
+NB <- tq_get("NENGSP", get = "economic.data", from = "2007-01-01", to = "2017-06-01") %>% rename(gdp = price)
+head(NB)
+NB
+
+us_gdp <- NB %>% tk_ts(start = 2017, freq = 1, silent = T)
+us_fir_arima <- auto.arima(us_gdp)
+sw_glance(us_fir_arima)
+us_forecast <- forecast(us_fir_arima, h = 3)
+us_forecast
+```
+
+Tidy the forecast
+
+```{r}
+nb_sweep <- sw_sweep(us_forecast, timekit_idx = T, rename_index = "date")
+nb_sweep
+```
+
+
+Plot
+
+```{r}
+nb_sweep %>% ggplot(aes(x = date, y = gdp, color = key)) + 
+  geom_ribbon(aes(ymin = lo.95, ymax = hi.95, fill = "red", color = NA, size = 0)) +
+  geom_ribbon(aes(ymin = lo.80, ymax = hi.80, fill = key), fill = "blue3", size = 0, alpha = 0.8) +
+  geom_line(size = 1) + geom_point(size = 2) + theme_tq(base_size = 16) + scale_color_tq() + labs(title = "NE GDP, 3 Yr Forecast", x = "", y = "GDP, US $ Millions")
+  
+```
+
+
