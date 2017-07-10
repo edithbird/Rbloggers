@@ -3,14 +3,13 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
-
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+[RBloggers Sweep and Forecast](https://www.r-bloggers.com/sweep-extending-broom-for-time-series-forecasting/)
 
 ```{r libraries, message=FALSE, warning=FALSE}
 library(forecast)
 library(timekit)
 library(geofacet)
+vignette("geofacet")
 library(tidyquant)
 library(sweep)
 ```
@@ -20,31 +19,36 @@ library(sweep)
 ```{r}
 states <- tibble(abbreviation = state.abb) %>% mutate(fred_code = paste0(abbreviation, "NGSP")) %>% select(2:1)
 states
-states_gdp <- states_gdp %>%
+states_gdp <- states %>%
     tq_get(get = "economic.data", from = "2007-01-01", to = "2017-06-01") 
-states_gdp <- allStates %>% nest()
+states_gdp
+states_gdp <- states_gdp %>% select(-fred_code) %>% group_by(abbreviation) %>% rename(gdp = price)
+states_gdp <- states_gdp %>% mutate(data_ts = map(data, tk_ts, freq = 1, start = 2007, silent = T))
+
+states_gdp <- states_gdp%>% nest()
 states_gdp
 states_gdp <- states_gdp %>%
     mutate(data_ts = map(data, tk_ts, freq = 1, start = 2007, silent = TRUE))
 states_gdp
+
+states_gdp <- states_gdp %>% mutate(fit = map(data_ts, auto.arima))
+states_gdp %>% mutate(glance = map(fit, sw_glance)) %>% unnest(glance, .drop = T)
+states_gdp
+states_gdp <- states_gdp %>% mutate(forecast = map(fit, forecast, h = 3))
+states_gdp_sweep <- states_gdp %>% mutate(sweep = map(forecast, sw_sweep, timekit_idx = T, rename_index = "date")) %>% select(abbreviation, sweep) %>% unnest()
+states_gdp_sweep
 ```
 
 
 Get all states
 
-```{r}
-states_gdp <- tq_get(states, get = "economic.data", from = "2007-01-01", to = "2017-06-01") %>% rename(gdp = price)
-head(states_gdp, 20)
-states_gdp <- allStates %>%
-    select(-fred_code) %>%
-    group_by(abbreviation)
-states_gdp
-states_gdp <- states_gdp %>%
-    nest()
-states_gdp
+```{r, message=FALSE, warning=FALSE}
+states_gdp_sweep %>% ggplot(aes(x = date, y = gdp, color = key)) + geom_ribbon(aes(ymin = lo.95, ymax = hi.95), fill =  "#D5DBFF", color = NA, size = 0) + geom_ribbon(aes(ymin = lo.80, ymax = hi.80), fill =  "#596DD5", color = NA, size = 0, alpha = 0.8) + geom_line() + scale_y_continuous(label = function(x) x*1e-6) + scale_x_date(date_breaks = "5 years", labels = scales::date_format("%Y"))   + facet_geo(~abbreviation, scale = "free_y") + theme_tq() + scale_color_tq() + theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1), axis.text.y = element_blank()) + ggtitle("State GDP, 3-Year Forecast") + xlab("") + ylab("GDP, Free Scale")
+
 
 ```
 
+ 
 
 
 
@@ -83,4 +87,29 @@ nb_sweep %>% ggplot(aes(x = date, y = gdp, color = key)) +
   
 ```
 
+
+```{r, fig.height=9, fig.width=11}
+states_gdp_sweep %>%
+    ggplot(aes(x = date, y = gdp, color = key)) +
+    # Prediction intervals
+    geom_ribbon(aes(ymin = lo.95, ymax = hi.95), 
+                fill = "#D5DBFF", color = NA, size = 0) +
+    geom_ribbon(aes(ymin = lo.80, ymax = hi.80, fill = key), 
+                fill = "#596DD5", color = NA, size = 0, alpha = 0.8) +
+    # Actual & Forecast
+    geom_line() + 
+    # Aesthetics
+    scale_y_continuous(label = function(x) x*1e-6) + 
+    scale_x_date(date_breaks = "5 years", labels = scales::date_format("%Y")) +
+    facet_geo(~ abbreviation, scale = "free_y") +
+    theme_tq() +
+    scale_color_tq() +
+    theme(legend.position = "none", 
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          axis.text.y = element_blank()
+          ) +
+    ggtitle("State GDP, 3-Year Forecast") +
+    xlab("") +
+    ylab("GDP, Free Scale")
+```
 
