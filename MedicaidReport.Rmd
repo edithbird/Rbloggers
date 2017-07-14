@@ -18,11 +18,14 @@ library(descr)
 library(treemap)
 ```
 
+```{r}
+medicaid <- read.csv("medicaid.csv", header = T, stringsAsFactors = F)
+
+```
 
 ###Read in Data
 
 ```{r}
-medicaid <- read.csv("medicaid.csv", header = T, stringsAsFactors = F)
 
 #treatment drug
 
@@ -30,6 +33,7 @@ CODEINE <- medicaid %>% filter(Product.Name == "TYLENOL W/")
 CODEINE
     CODEINE1 <- medicaid %>% filter(Product.Name == "OXYCONTIN")
 CODEINE1
+
 ```
 
 ###Medical Treatment
@@ -51,6 +55,11 @@ dim(TREATMENT)
 ```
 
 
+###Convert medicaid data to a dataframe
+
+```{r}
+Medicaid <- as.data.frame(medicaid)
+```
 ###Retrieve narcotics list
 
 ```{r}
@@ -85,11 +94,6 @@ Population
 ```
 
 
-###Convert medicaid data to a dataframe
-
-```{r}
-Medicaid <- as.data.frame(medicaid)
-```
 
 ###Filter some of the narcotics from the medicaid dataframe
 
@@ -168,20 +172,32 @@ PercentRx
 ```
 
 
-
 Join Population with Treatment
 
 ```{r}
 TREATMENT <- TREATMENT %>% select(State, Number.of.Prescriptions,Product.Name, Total.Amount.Reimbursed)
-head(TREATMENT)
+
 TreatPop <- TREATMENT %>% na.omit()
-TreatPop <- TreatPop %>% group_by(State) %>% summarise(count = sum(Number.of.Prescriptions))
+TreatPop <- TreatPop %>% group_by(State) %>% summarise(countRx = sum(Number.of.Prescriptions)) 
 TreatPop <- inner_join(TreatPop, Population)
-TreatPop
-PercentinTx <- TreatPop %>% group_by(State) %>% mutate(percentReceivingRx = round(count/StatePopul, digits = 3))
-PercentinTx
+TreatPop <- TreatPop %>% arrange(StateName)
+
+
+TreatPop1 <- cbind.data.frame(TreatPop, xxx)
+
+TreatPop1 <- TreatPop1 %>% select(State, countRx, StatePopul, Difference)
+TreatPop1 <- TreatPop1 %>% mutate(zRx = scale(countRx), zPop = scale(StatePopul), zDiff = scale(Difference))
+PercentinTx <- TreatPop %>%  mutate(percentReceivingRx = round(countRx/StatePopul, digits = 3))
+
 treemap(PercentinTx,index = c("percentReceivingRx","State"), vSize = "percentReceivingRx", vColor = "percentReceivingRx", 
          align.labels = list(c("left", "top"), c("right", "bottom")), title = "Treatment Rx per person")
+```
+
+```{r}
+head(TREATMENT)
+head(TreatPop)
+head(xxx)
+head(TreatPop1)
 ```
 
 
@@ -230,9 +246,6 @@ for(i in unique(UniqueData$State)){
   print(head(newDS))
   hist(newDS$Number.of.Prescriptions, main = paste(i, "'s Rx Frequency"))
   identify(newDS$Number.of.Prescriptions)
-  
-  
-  
   
 }
 ```
@@ -393,7 +406,7 @@ Join <- inner_join(States, allDrugsXX)
 
 ```{r}
 allDrugs <- inner_join(allDrugs, Population)
-allDrugs
+
 dim(allDrugs)
 ```
 
@@ -535,7 +548,14 @@ newset
 ggplot(dat.m, aes(State, value, fill=variable)) + 
   geom_bar(position="dodge",stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + scale_fill_manual(values = c("red", "blue")) 
 
+head(TreatPop1, 1)
+Melted <- TreatPop1 %>% select(State, zRx, zPop, zDiff)
+anotherMelted <- melt(Melted)
+anotherMelted
 
+
+ggplot(anotherMelted, aes(State, value, fill=variable)) + 
+  geom_bar(position="dodge",stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + scale_fill_manual(values = c("red", "blue", "green")) 
 
 ```
 
@@ -546,10 +566,19 @@ forCorr <- DeathandRxperCapperState %>% select(State, zRx, zOD)
 
 ```{r}
 library(Hmisc)
-forCorr
+head(forCorr, 1)
 m1<-lm(zOD ~ zRx,data=forCorr)
 summary(m1)
+forCorr <- forCorr %>% arrange(State)
+head(Melted, 1)
 
+cc <- cbind.data.frame(Melted, forCorr)
+cc <- cc[ , c(1:2, 4,7)]
+cc
+head(TreatPop1)
+m <- inner_join(OpiodDeath, TreatPop1) 
+m <- m[,c(1:5)]
+m
 
 ```
 
